@@ -3,6 +3,23 @@
  * Separates Data handling from UI rendering
  */
 
+// --- Entity Schemas (Documentation) ---
+/**
+ * Aluno {
+ *   id: string,
+ *   nome: string,
+ *   unidade_id: string,
+ *   turma_id: string,
+ *   nivel_id: string,
+ *   horario: string,
+ *   mensalidade_valor: number,
+ *   tipo_matricula: "normal" | "casal" | "multiplas_turmas",
+ *   ativo: boolean,
+ *   created_at: string,
+ *   updated_at: string
+ * }
+ */
+
 // --- Data Logic (In-Memory) ---
 const DataStore = {
     state: {
