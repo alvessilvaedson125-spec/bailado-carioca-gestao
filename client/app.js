@@ -12,8 +12,20 @@ const DataStore = {
             turmas: [],
             unidades: [],
             professores: [],
-            // ... other entities
+            presenca: [],
+            mensalidades: [],
+            caixa: [],
+            lixeira: []
         }
+    },
+
+    // Data Getters
+    getCount(entity) {
+        return this.state.data[entity]?.length || 0;
+    },
+
+    getMensalidadesAbertasCount() {
+        return this.state.data.mensalidades.filter(m => m.status === 'aberta').length;
     },
 
     // Pages Configuration
@@ -99,14 +111,45 @@ const UI = {
         // Clear current content
         this.elements.contentArea.innerHTML = '';
 
-        // Render Empty State for now (as requested)
+        // Route to specific page renderer
+        if (pageId === 'dashboard') {
+            this.renderDashboard();
+        } else {
+            this.renderEmptyState(pageInfo);
+        }
+    },
+
+    renderDashboard() {
+        const container = document.createElement('div');
+        container.className = 'dashboard-cards';
+
+        const cards = [
+            { title: 'Total Alunos', value: DataStore.getCount('alunos') },
+            { title: 'Total Turmas', value: DataStore.getCount('turmas') },
+            { title: 'Total Unidades', value: DataStore.getCount('unidades') },
+            { title: 'Mensalidades em Aberto', value: DataStore.getMensalidadesAbertasCount() }
+        ];
+
+        cards.forEach(card => {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'summary-card';
+            cardEl.innerHTML = `
+                <span class="card-title">${card.title}</span>
+                <span class="card-value">${card.value}</span>
+            `;
+            container.appendChild(cardEl);
+        });
+
+        this.elements.contentArea.appendChild(container);
+    },
+
+    renderEmptyState(pageInfo) {
         const content = document.createElement('div');
         content.className = 'empty-state';
         content.innerHTML = `
             <h3>${pageInfo.label} Module</h3>
             <p>This is the empty state for the ${pageInfo.label.toLowerCase()} page.</p>
         `;
-        
         this.elements.contentArea.appendChild(content);
     }
 };
