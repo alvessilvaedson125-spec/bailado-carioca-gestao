@@ -19,6 +19,15 @@
  *   updated_at: string
  * }
  */
+/**
+ * Caixa {
+ *   id: string,
+ *   tipo: "entrada" | "saida",
+ *   descricao: string,
+ *   valor: number,
+ *   data: string
+ * }
+ */
 
 // --- Data Logic (In-Memory) ---
 const DataStore = {
@@ -144,7 +153,14 @@ const UI = {
             { title: 'Total Alunos', value: DataStore.getCount('alunos') },
             { title: 'Total Turmas', value: DataStore.getCount('turmas') },
             { title: 'Total Unidades', value: DataStore.getCount('unidades') },
-            { title: 'Mensalidades em Aberto', value: DataStore.getMensalidadesAbertasCount() }
+            { title: 'Mensalidades em Aberto', value: DataStore.getMensalidadesAbertasCount() getSaldoCaixa() {
+                return this.state.data.caixa.reduce((saldo, item) => {
+                    return item.tipo === 'entrada'
+                        ? saldo + item.valor
+                        : saldo - item.valor;
+                }, 0);
+            },
+ }
         ];
 
         cards.forEach(card => {
