@@ -1877,6 +1877,14 @@ function exibirRecibo(recibo) {
 
 /** Renderiza página do caixa */
 function renderCaixa() {
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth() + 1;
+  const anoAtual = hoje.getFullYear();
+
+  // Estado do filtro (usa variáveis locais que serão capturadas no closure)
+  let mesSelecionado = mesAtual;
+  let anoSelecionado = anoAtual;
+
   const header = document.createElement("div");
   header.style.cssText = "margin-bottom: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;";
 
@@ -1902,65 +1910,169 @@ function renderCaixa() {
 
   UI.content.appendChild(header);
 
-  // Resumo financeiro
-  const totalEntradas = DataStore.totalEntradas();
-  const totalSaidas = DataStore.totalSaidas();
-  const saldo = DataStore.saldoAtual();
-
-  const resumoGrid = document.createElement("div");
-  resumoGrid.className = "dashboard-cards";
-  resumoGrid.style.marginBottom = "1.5rem";
-  resumoGrid.innerHTML = `
-    <div class="summary-card">
-      <span class="card-title">Total Entradas</span>
-      <span class="card-value" style="color: #16a34a;">${formatarReais(totalEntradas)}</span>
-    </div>
-    <div class="summary-card">
-      <span class="card-title">Total Saídas</span>
-      <span class="card-value" style="color: #dc2626;">${formatarReais(totalSaidas)}</span>
-    </div>
-    <div class="summary-card">
-      <span class="card-title">Saldo Atual</span>
-      <span class="card-value" style="color: ${saldo >= 0 ? "#16a34a" : "#dc2626"};">${formatarReais(saldo)}</span>
-    </div>
+  // Filtro por período
+  const filtroContainer = document.createElement("div");
+  filtroContainer.style.cssText = "margin-bottom: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;";
+  filtroContainer.innerHTML = `
+    <label style="font-weight: 500; color: #374151;">Período:</label>
+    <select id="filtroMes" data-testid="select-filter-month" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px;">
+      <option value="0">Todos os meses</option>
+      <option value="1">Janeiro</option>
+      <option value="2">Fevereiro</option>
+      <option value="3">Março</option>
+      <option value="4">Abril</option>
+      <option value="5">Maio</option>
+      <option value="6">Junho</option>
+      <option value="7">Julho</option>
+      <option value="8">Agosto</option>
+      <option value="9">Setembro</option>
+      <option value="10">Outubro</option>
+      <option value="11">Novembro</option>
+      <option value="12">Dezembro</option>
+    </select>
+    <select id="filtroAno" data-testid="select-filter-year" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px;">
+      <option value="0">Todos os anos</option>
+    </select>
   `;
-  UI.content.appendChild(resumoGrid);
+  UI.content.appendChild(filtroContainer);
 
-  // Lista de lançamentos
-  const lancamentos = [...DataStore.state.data.caixa].sort((a, b) => 
-    new Date(b.data) - new Date(a.data)
-  );
+  const selectMes = filtroContainer.querySelector("#filtroMes");
+  const selectAno = filtroContainer.querySelector("#filtroAno");
 
-  if (lancamentos.length === 0) {
-    UI.content.innerHTML += '<p style="color: #64748b;">Nenhum lançamento registrado.</p>';
-    return;
+  // Popular anos (do ano atual até 5 anos atrás)
+  for (let ano = anoAtual; ano >= anoAtual - 5; ano--) {
+    const option = document.createElement("option");
+    option.value = ano;
+    option.textContent = ano;
+    selectAno.appendChild(option);
   }
 
-  const grid = criarGridCards();
+  // Selecionar mês e ano atual por padrão
+  selectMes.value = mesAtual;
+  selectAno.value = anoAtual;
 
-  lancamentos.forEach(lanc => {
-    const isEntrada = lanc.tipo === "entrada";
+  // Container para resumo (será atualizado)
+  const resumoContainer = document.createElement("div");
+  resumoContainer.id = "caixa-resumo";
+  UI.content.appendChild(resumoContainer);
 
-    const card = document.createElement("div");
-    card.className = "summary-card";
-    card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: start;">
-        <strong>${lanc.descricao || (isEntrada ? "Entrada" : "Saída")}</strong>
-        <span style="color: ${isEntrada ? "#16a34a" : "#dc2626"}; font-weight: 600;">
-          ${isEntrada ? "+" : "-"}${formatarReais(lanc.valor)}
-        </span>
+  // Container para lançamentos (será atualizado)
+  const lancamentosContainer = document.createElement("div");
+  lancamentosContainer.id = "caixa-lancamentos";
+  UI.content.appendChild(lancamentosContainer);
+
+  // Função para atualizar a visualização
+  function atualizarCaixa() {
+    mesSelecionado = parseInt(selectMes.value);
+    anoSelecionado = parseInt(selectAno.value);
+
+    // Filtrar lançamentos pelo período
+    let lancamentosFiltrados = [...DataStore.state.data.caixa];
+
+    if (mesSelecionado > 0 || anoSelecionado > 0) {
+      lancamentosFiltrados = lancamentosFiltrados.filter(lanc => {
+        const dataLanc = new Date(lanc.data);
+        const mesLanc = dataLanc.getMonth() + 1;
+        const anoLanc = dataLanc.getFullYear();
+        
+        const mesOk = mesSelecionado === 0 || mesLanc === mesSelecionado;
+        const anoOk = anoSelecionado === 0 || anoLanc === anoSelecionado;
+        
+        return mesOk && anoOk;
+      });
+    }
+
+    // Calcular totais do período
+    const totalEntradas = lancamentosFiltrados
+      .filter(l => l.tipo === "entrada")
+      .reduce((sum, l) => sum + (l.valor || 0), 0);
+
+    const totalSaidas = lancamentosFiltrados
+      .filter(l => l.tipo === "saida")
+      .reduce((sum, l) => sum + (l.valor || 0), 0);
+
+    const saldo = totalEntradas - totalSaidas;
+
+    // Texto do período
+    const meses = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
+                   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    let periodoTexto = "";
+    if (mesSelecionado > 0 && anoSelecionado > 0) {
+      periodoTexto = `${meses[mesSelecionado]}/${anoSelecionado}`;
+    } else if (mesSelecionado > 0) {
+      periodoTexto = meses[mesSelecionado];
+    } else if (anoSelecionado > 0) {
+      periodoTexto = `Ano ${anoSelecionado}`;
+    } else {
+      periodoTexto = "Todo o período";
+    }
+
+    // Atualizar resumo
+    resumoContainer.innerHTML = "";
+    const resumoGrid = document.createElement("div");
+    resumoGrid.className = "dashboard-cards";
+    resumoGrid.style.marginBottom = "1.5rem";
+    resumoGrid.innerHTML = `
+      <div class="summary-card">
+        <span class="card-title">Entradas (${periodoTexto})</span>
+        <span class="card-value" style="color: #16a34a;">${formatarReais(totalEntradas)}</span>
       </div>
-      <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
-        📅 ${formatarData(lanc.data)}<br>
-        ${lanc.aluno_nome ? `👤 ${lanc.aluno_nome}<br>` : ""}
-        💳 ${lanc.forma_pagamento || "-"}
-        ${lanc.telefone ? `<br>📞 ${lanc.telefone}` : ""}
-      </p>
+      <div class="summary-card">
+        <span class="card-title">Saídas (${periodoTexto})</span>
+        <span class="card-value" style="color: #dc2626;">${formatarReais(totalSaidas)}</span>
+      </div>
+      <div class="summary-card">
+        <span class="card-title">Saldo (${periodoTexto})</span>
+        <span class="card-value" style="color: ${saldo >= 0 ? "#16a34a" : "#dc2626"};">${formatarReais(saldo)}</span>
+      </div>
     `;
-    grid.appendChild(card);
-  });
+    resumoContainer.appendChild(resumoGrid);
 
-  UI.content.appendChild(grid);
+    // Atualizar lista de lançamentos
+    lancamentosContainer.innerHTML = "";
+
+    const lancamentosOrdenados = lancamentosFiltrados.sort((a, b) => 
+      new Date(b.data) - new Date(a.data)
+    );
+
+    if (lancamentosOrdenados.length === 0) {
+      lancamentosContainer.innerHTML = '<p style="color: #64748b;">Nenhum lançamento no período selecionado.</p>';
+      return;
+    }
+
+    const grid = criarGridCards();
+
+    lancamentosOrdenados.forEach(lanc => {
+      const isEntrada = lanc.tipo === "entrada";
+
+      const card = document.createElement("div");
+      card.className = "summary-card";
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+          <strong>${lanc.descricao || (isEntrada ? "Entrada" : "Saída")}</strong>
+          <span style="color: ${isEntrada ? "#16a34a" : "#dc2626"}; font-weight: 600;">
+            ${isEntrada ? "+" : "-"}${formatarReais(lanc.valor)}
+          </span>
+        </div>
+        <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
+          Data: ${formatarData(lanc.data)}<br>
+          ${lanc.aluno_nome ? `Aluno: ${lanc.aluno_nome}<br>` : ""}
+          Pagamento: ${lanc.forma_pagamento || "-"}
+          ${lanc.telefone ? `<br>Tel: ${lanc.telefone}` : ""}
+        </p>
+      `;
+      grid.appendChild(card);
+    });
+
+    lancamentosContainer.appendChild(grid);
+  }
+
+  // Event listeners para os filtros
+  selectMes.onchange = atualizarCaixa;
+  selectAno.onchange = atualizarCaixa;
+
+  // Renderizar inicial
+  atualizarCaixa();
 }
 
 /** Modal para entrada ou saída no caixa */
