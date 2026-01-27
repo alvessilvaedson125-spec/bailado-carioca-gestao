@@ -1,0 +1,127 @@
+Quero que você faça uma VARREDURA COMPLETA do sistema atual (app.js + interface),
+como se fosse uma auditoria técnica e funcional.
+
+OBJETIVO:
+Listar TUDO o que o sistema já possui, o que está parcialmente implementado
+e o que ainda não existe, de forma clara e organizada.
+
+INSTRUÇÕES:
+
+1️⃣ Analise TODO o app atual (estado, abas, cards, modais, ações e lógica).
+
+2️⃣ Gere um CHECKLIST dividido em blocos:
+
+━━━━━━━━━━━━━━━━━━━━
+🔹 ESTRUTURA GERAL
+━━━━━━━━━━━━━━━━━━━━
+- Armazenamento de dados (localStorage)
+- Organização de estado
+- Soft delete / status
+- Navegação entre abas
+- Estabilidade (preview abre? erros no console?)
+
+━━━━━━━━━━━━━━━━━━━━
+🔹 DASHBOARD
+━━━━━━━━━━━━━━━━━━━━
+- Métricas exibidas
+- O que é calculado corretamente
+- O que está faltando ou pode melhorar
+
+━━━━━━━━━━━━━━━━━━━━
+🔹 ALUNOS
+━━━━━━━━━━━━━━━━━━━━
+- Cadastro (campos existentes)
+- Status (ativo / trancado / excluído)
+- Cards (informações exibidas)
+- Filtros
+- Ações disponíveis (editar, trancar, excluir)
+- Integração com turmas
+- Pontos faltantes
+
+━━━━━━━━━━━━━━━━━━━━
+🔹 TURMAS
+━━━━━━━━━━━━━━━━━━━━
+- Cadastro (campos existentes)
+- Vínculo com alunos
+- Vínculo com professores/monitores
+- Card da turma (o que mostra hoje)
+- O que NÃO deve aparecer (ex: alunos trancados)
+- Pontos a corrigir ou evoluir
+
+━━━━━━━━━━━━━━━━━━━━
+🔹 UNIDADES
+━━━━━━━━━━━━━━━━━━━━
+- Cadastro
+- Edição
+- Exclusão
+- Vínculos com turmas
+- Estado atual da funcionalidade
+
+━━━━━━━━━━━━━━━━━━━━
+🔹 PROFESSORES / MONITORES
+━━━━━━━━━━━━━━━━━━━━
+- Cadastro
+- Tipo (professor / monitor)
+- Vínculo com turmas
+- O que está funcional
+- O que falta
+
+━━━━━━━━━━━━━━━━━━━━
+🔹 MENSALIDADES
+━━━━━━━━━━━━━━━━━━━━
+- Geração automática
+- Registro de pagamento
+- Status (paga / pendente)
+- Integração com caixa
+- Geração de recibo
+- Pontos incompletos
+
+━━━━━━━━━━━━━━━━━━━━
+🔹 CAIXA
+━━━━━━━━━━━━━━━━━━━━
+- Entradas registradas
+- Aula avulsa
+- Forma de pagamento
+- O que existe hoje
+- O que falta (saídas, filtros, totais)
+
+━━━━━━━━━━━━━━━━━━━━
+🔹 RECIBOS
+━━━━━━━━━━━━━━━━━━━━
+- Quando são gerados
+- Conteúdo do recibo
+- PDF
+- WhatsApp
+- O que está ok
+- O que está faltando
+
+━━━━━━━━━━━━━━━━━━━━
+🔹 RELATÓRIOS
+━━━━━━━━━━━━━━━━━━━━
+- Relatório mensal
+- Dados disponíveis
+- O que não está funcionando
+- O que falta para ficar pronto para contador
+
+━━━━━━━━━━━━━━━━━━━━
+🔹 CONFIGURAÇÕES
+━━━━━━━━━━━━━━━━━━━━
+- O que existe
+- O que é apenas placeholder
+- O que deveria existir
+
+3️⃣ Para cada bloco, use este padrão:
+
+✔ Funciona
+⚠ Funciona parcialmente
+❌ Não existe ainda
+
+4️⃣ Ao final, gere:
+- Uma LISTA PRIORIZADA dos próximos passos
+- Separada em:
+  🔥 Essencial
+  ➕ Importante
+  ✨ Melhoria
+
+5️⃣ NÃO gere código.
+Quero apenas o diagnóstico completo do sistema atual.
