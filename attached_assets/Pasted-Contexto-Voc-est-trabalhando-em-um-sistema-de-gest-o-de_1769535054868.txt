@@ -1,0 +1,128 @@
+Contexto:
+Você está trabalhando em um sistema de gestão de aulas de dança chamado Bailado Carioca, feito em JavaScript puro, usando LocalStorage como banco de dados e interface em cards.
+O sistema já possui módulos de Alunos, Turmas, Mensalidades e Caixa.
+
+🔹 OBJETIVO
+
+Implementar geração, visualização, salvamento e compartilhamento de recibos, usando uma linguagem humana, simples e profissional, adequada para WhatsApp e PDF.
+
+🔹 TEXTO PADRÃO DO RECIBO (VERSÃO 3)
+
+Use exatamente este texto como template:
+
+RECIBO
+
+Confirmo o recebimento de R$ {{valor}} referente a {{descricaoServico}},
+pago por {{nomeAluno}}.
+
+Forma de pagamento: {{formaPagamento}}
+Data do pagamento: {{data}}
+
+Com isso, dou plena quitação do valor recebido.
+
+Bailado Carioca
+
+🔹 REGRAS TÉCNICAS (OBRIGATÓRIAS)
+
+NÃO salvar o texto do recibo no banco
+
+Salvar apenas os dados estruturados:
+
+{
+  id,
+  pagamentoId,
+  nomeAluno,
+  telefoneAluno,
+  valor,
+  descricaoServico,
+  formaPagamento,
+  data,
+  tipo: "mensalidade" | "aula_avulsa"
+}
+
+
+O texto do recibo deve ser gerado dinamicamente a partir do template
+
+O recibo deve ser:
+
+Visualizável na tela (modal ou card)
+
+Gerável em PDF
+
+Compartilhável por WhatsApp (link wa.me com texto codificado)
+
+🔹 FUNCIONALIDADES A IMPLEMENTAR
+📄 Recibo
+
+Botão “Gerar Recibo” em:
+
+Mensalidades pagas
+
+Aulas avulsas registradas no Caixa
+
+Preview do recibo antes de gerar PDF
+
+Opção de:
+
+Copiar texto
+
+Baixar PDF
+
+Enviar por WhatsApp
+
+📤 WhatsApp
+
+Usar o telefone do aluno se existir
+
+Gerar link:
+
+https://wa.me/55{{telefone}}?text={{reciboCodificado}}
+
+
+Se não houver telefone, permitir copiar o texto
+
+📑 PDF
+
+PDF simples, limpo e elegante
+
+Título “RECIBO”
+
+Corpo com o texto acima
+
+Rodapé com:
+
+Bailado Carioca
+Gerado em {{dataHora}}
+
+🔹 PADRÕES DE UX
+
+Linguagem humana, sem juridiquês
+
+Layout limpo, espaçado, legível no celular
+
+Botões claros:
+
+📄 Ver Recibo
+
+📥 Baixar PDF
+
+📤 Enviar WhatsApp
+
+🔹 NÃO FAZER
+
+❌ Não usar frameworks
+❌ Não quebrar funcionalidades existentes
+❌ Não salvar HTML ou texto pronto no banco
+❌ Não criar dependência externa desnecessária
+
+🔹 RESULTADO ESPERADO
+
+Um sistema onde:
+
+Todo pagamento gera um recibo
+
+O recibo é humano, elegante e fácil de compartilhar
+
+O código é organizado, sustentável e profissional
+
+O app parece um produto pronto, não um protótipo

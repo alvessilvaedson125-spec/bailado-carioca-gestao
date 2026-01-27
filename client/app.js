@@ -207,6 +207,142 @@ function gerarNumeroRecibo() {
   return String(num).padStart(5, "0");
 }
 
+/** Template do recibo - texto gerado dinamicamente */
+function gerarTextoRecibo(recibo) {
+  return `RECIBO
+
+Confirmo o recebimento de ${formatarReais(recibo.valor)} referente a ${recibo.descricaoServico},
+pago por ${recibo.nomeAluno}.
+
+Forma de pagamento: ${recibo.formaPagamento}
+Data do pagamento: ${formatarData(recibo.data)}
+
+Com isso, dou plena quitação do valor recebido.
+
+Bailado Carioca`;
+}
+
+/** Formata telefone para WhatsApp (remove caracteres especiais) */
+function formatarTelefoneWhatsApp(telefone) {
+  if (!telefone) return null;
+  const numeros = telefone.replace(/\D/g, "");
+  if (numeros.length >= 10) {
+    return numeros.startsWith("55") ? numeros : "55" + numeros;
+  }
+  return null;
+}
+
+/** Gera link do WhatsApp com texto do recibo */
+function gerarLinkWhatsApp(telefone, texto) {
+  const telefoneFormatado = formatarTelefoneWhatsApp(telefone);
+  const textoCodificado = encodeURIComponent(texto);
+  if (telefoneFormatado) {
+    return `https://wa.me/${telefoneFormatado}?text=${textoCodificado}`;
+  }
+  return null;
+}
+
+/** Gera e baixa PDF do recibo */
+function gerarPDFRecibo(recibo) {
+  const texto = gerarTextoRecibo(recibo);
+  const dataGeracao = new Date().toLocaleString("pt-BR");
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Recibo #${recibo.numero}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: Georgia, 'Times New Roman', serif; 
+          padding: 60px; 
+          max-width: 600px; 
+          margin: 0 auto;
+          line-height: 1.8;
+          color: #1a1a1a;
+        }
+        .header { 
+          text-align: center; 
+          margin-bottom: 40px;
+          border-bottom: 2px solid #333;
+          padding-bottom: 20px;
+        }
+        .header h1 { 
+          font-size: 28px; 
+          letter-spacing: 4px;
+          font-weight: normal;
+        }
+        .numero {
+          font-size: 14px;
+          color: #666;
+          margin-top: 8px;
+        }
+        .body { 
+          margin: 40px 0; 
+          font-size: 16px;
+          text-align: justify;
+        }
+        .body p { margin-bottom: 20px; }
+        .assinatura {
+          margin-top: 60px;
+          text-align: center;
+          font-weight: bold;
+          font-size: 18px;
+        }
+        .footer { 
+          margin-top: 80px; 
+          text-align: center; 
+          font-size: 11px; 
+          color: #888;
+          border-top: 1px solid #ddd;
+          padding-top: 20px;
+        }
+        @media print {
+          body { padding: 40px; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>RECIBO</h1>
+        <div class="numero">N° ${recibo.numero}</div>
+      </div>
+      <div class="body">
+        <p>Confirmo o recebimento de <strong>${formatarReais(recibo.valor)}</strong> referente a ${recibo.descricaoServico}, pago por <strong>${recibo.nomeAluno}</strong>.</p>
+        <p><strong>Forma de pagamento:</strong> ${recibo.formaPagamento}</p>
+        <p><strong>Data do pagamento:</strong> ${formatarData(recibo.data)}</p>
+        <p>Com isso, dou plena quitação do valor recebido.</p>
+      </div>
+      <div class="assinatura">Bailado Carioca</div>
+      <div class="footer">Gerado em ${dataGeracao}</div>
+    </body>
+    </html>
+  `;
+  
+  const printWindow = window.open("", "_blank", "width=650,height=800");
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 300);
+}
+
+/** Copia texto para área de transferência */
+function copiarTexto(texto) {
+  navigator.clipboard.writeText(texto).then(() => {
+    alert("Texto copiado!");
+  }).catch(() => {
+    const textarea = document.createElement("textarea");
+    textarea.value = texto;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+    alert("Texto copiado!");
+  });
+}
+
 /* =========================
    RENDERIZADORES DE PÁGINA
 ========================= */
@@ -1319,8 +1455,8 @@ function abrirModalPagamento(mensalidade) {
       <select id="forma" style="width: 100%; padding: 0.5rem;">
         <option value="Pix">Pix</option>
         <option value="Dinheiro">Dinheiro</option>
-        <option value="Cartão">Cartão</option>
-        <option value="Transferência">Transferência</option>
+        <option value="Cartao">Cartao</option>
+        <option value="Transferencia">Transferencia</option>
       </select>
     </div>
 
@@ -1337,34 +1473,25 @@ function abrirModalPagamento(mensalidade) {
     const dataAtual = new Date().toISOString();
     const numeroRecibo = gerarNumeroRecibo();
 
-    // Atualiza mensalidade
     mensalidade.status = "paga";
     mensalidade.forma_pagamento = formaPagamento;
     mensalidade.data_pagamento = dataAtual;
 
-    // Gera recibo
-    const textoRecibo = `RECIBO Nº ${numeroRecibo}
-
-Recebemos de ${aluno?.nome || "N/A"} a quantia de ${formatarReais(mensalidade.valor)} referente à mensalidade de ${mensalidade.mes}/${mensalidade.ano}.
-
-Forma de pagamento: ${formaPagamento}
-Data: ${formatarData(dataAtual)}
-
-Bailado Carioca`;
-
-    DataStore.state.data.recibos.push({
+    const reciboData = {
       id: crypto.randomUUID(),
       numero: numeroRecibo,
-      aluno_id: mensalidade.aluno_id,
-      aluno_nome: aluno?.nome || "N/A",
-      competencia: `${mensalidade.mes}/${mensalidade.ano}`,
+      pagamentoId: mensalidade.id,
+      nomeAluno: aluno?.nome || "N/A",
+      telefoneAluno: aluno?.telefone || "",
       valor: mensalidade.valor,
-      forma_pagamento: formaPagamento,
+      descricaoServico: `mensalidade de ${mensalidade.mes}/${mensalidade.ano}`,
+      formaPagamento: formaPagamento,
       data: dataAtual,
-      texto: textoRecibo,
-    });
+      tipo: "mensalidade",
+    };
 
-    // Lança no caixa como entrada
+    DataStore.state.data.recibos.push(reciboData);
+
     DataStore.state.data.caixa.push({
       id: crypto.randomUUID(),
       data: dataAtual,
@@ -1377,6 +1504,62 @@ Bailado Carioca`;
     });
 
     DataStore.save();
+    overlay.remove();
+    
+    abrirModalReciboGerado(reciboData);
+  };
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+/** Modal exibido apos gerar recibo com opcoes de compartilhar */
+function abrirModalReciboGerado(recibo) {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+  modal.style.maxWidth = "500px";
+
+  const textoRecibo = gerarTextoRecibo(recibo);
+  const linkWhatsApp = gerarLinkWhatsApp(recibo.telefoneAluno, textoRecibo);
+
+  modal.innerHTML = `
+    <h2 class="modal-title" style="color: #16a34a;">Pagamento Registrado!</h2>
+    
+    <div style="background: #f8fafc; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #16a34a;">
+      <p style="font-size: 0.85rem; color: #374151; white-space: pre-line; line-height: 1.6;">${textoRecibo}</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+      <button class="btn-primary" id="btn-pdf" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+        <span>Baixar PDF</span>
+      </button>
+      
+      ${linkWhatsApp ? `
+        <button class="btn-secondary" id="btn-whatsapp" style="background: #25D366; color: white; border: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+          <span>Enviar WhatsApp</span>
+        </button>
+      ` : ""}
+      
+      <button class="btn-secondary" id="btn-copiar" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+        <span>Copiar Texto</span>
+      </button>
+    </div>
+
+    <div class="modal-actions" style="margin-top: 1.5rem;">
+      <button class="modal-btn-secondary">Fechar</button>
+    </div>
+  `;
+
+  modal.querySelector("#btn-pdf").onclick = () => gerarPDFRecibo(recibo);
+  
+  if (linkWhatsApp) {
+    modal.querySelector("#btn-whatsapp").onclick = () => window.open(linkWhatsApp, "_blank");
+  }
+  
+  modal.querySelector("#btn-copiar").onclick = () => copiarTexto(textoRecibo);
+  
+  modal.querySelector(".modal-btn-secondary").onclick = () => {
     overlay.remove();
     UI.navigate("mensalidades");
   };
@@ -1403,6 +1586,8 @@ function renderRecibos() {
   const grid = criarGridCards();
 
   recibos.forEach(recibo => {
+    const tipoLabel = recibo.tipo === "aula_avulsa" ? "Aula Avulsa" : "Mensalidade";
+    
     const card = document.createElement("div");
     card.className = "summary-card";
     card.innerHTML = `
@@ -1411,12 +1596,12 @@ function renderRecibos() {
         <span style="color: #16a34a; font-weight: 600;">${formatarReais(recibo.valor)}</span>
       </div>
       <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
-        👤 ${recibo.aluno_nome}<br>
-        📅 Competência: ${recibo.competencia}<br>
-        💳 ${recibo.forma_pagamento}<br>
-        🗓️ ${formatarData(recibo.data)}
+        <span style="display: inline-block; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: ${recibo.tipo === "aula_avulsa" ? "#fef9c3" : "#dbeafe"}; color: ${recibo.tipo === "aula_avulsa" ? "#a16207" : "#1d4ed8"}; margin-bottom: 4px;">${tipoLabel}</span><br>
+        ${recibo.nomeAluno}<br>
+        ${recibo.descricaoServico}<br>
+        ${recibo.formaPagamento} - ${formatarData(recibo.data)}
       </p>
-      <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;"></div>
+      <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;"></div>
     `;
 
     const acoes = card.querySelector("div:last-child");
@@ -1426,6 +1611,24 @@ function renderRecibos() {
     btnVer.textContent = "Ver Recibo";
     btnVer.onclick = () => exibirRecibo(recibo);
     acoes.appendChild(btnVer);
+
+    const btnPDF = document.createElement("button");
+    btnPDF.className = "btn-secondary";
+    btnPDF.textContent = "PDF";
+    btnPDF.onclick = () => gerarPDFRecibo(recibo);
+    acoes.appendChild(btnPDF);
+
+    const linkWA = gerarLinkWhatsApp(recibo.telefoneAluno, gerarTextoRecibo(recibo));
+    if (linkWA) {
+      const btnWA = document.createElement("button");
+      btnWA.className = "btn-secondary";
+      btnWA.style.background = "#25D366";
+      btnWA.style.color = "white";
+      btnWA.style.border = "none";
+      btnWA.textContent = "WhatsApp";
+      btnWA.onclick = () => window.open(linkWA, "_blank");
+      acoes.appendChild(btnWA);
+    }
 
     grid.appendChild(card);
   });
@@ -1438,14 +1641,42 @@ function exibirRecibo(recibo) {
   const overlay = criarOverlay();
   const modal = document.createElement("div");
   modal.className = "modal-card";
+  modal.style.maxWidth = "500px";
+
+  const textoRecibo = gerarTextoRecibo(recibo);
+  const linkWhatsApp = gerarLinkWhatsApp(recibo.telefoneAluno, textoRecibo);
 
   modal.innerHTML = `
     <h2 class="modal-title">Recibo #${recibo.numero}</h2>
-    <pre style="background: #f8fafc; padding: 1rem; border-radius: 8px; white-space: pre-wrap; font-family: monospace; font-size: 0.9rem;">${recibo.texto}</pre>
-    <div class="modal-actions">
+    
+    <div style="background: #f8fafc; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #3b82f6;">
+      <p style="font-size: 0.85rem; color: #374151; white-space: pre-line; line-height: 1.6;">${textoRecibo}</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+      <button class="btn-primary" id="btn-pdf">Baixar PDF</button>
+      
+      ${linkWhatsApp ? `
+        <button class="btn-secondary" id="btn-whatsapp" style="background: #25D366; color: white; border: none;">Enviar WhatsApp</button>
+      ` : ""}
+      
+      <button class="btn-secondary" id="btn-copiar">Copiar Texto</button>
+    </div>
+
+    <div class="modal-actions" style="margin-top: 1.5rem;">
       <button class="modal-btn-secondary">Fechar</button>
     </div>
   `;
+
+  modal.querySelector("#btn-pdf").onclick = () => gerarPDFRecibo(recibo);
+  
+  if (linkWhatsApp) {
+    modal.querySelector("#btn-whatsapp").onclick = () => window.open(linkWhatsApp, "_blank");
+  }
+  
+  modal.querySelector("#btn-copiar").onclick = () => copiarTexto(textoRecibo);
+  
+  modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
 
   modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
 
@@ -1657,7 +1888,7 @@ function abrirModalAulaAvulsa() {
         <select id="forma">
           <option value="Pix">Pix</option>
           <option value="Dinheiro">Dinheiro</option>
-          <option value="Cartão">Cartão</option>
+          <option value="Cartao">Cartao</option>
         </select>
       </div>
     </div>
@@ -1672,31 +1903,53 @@ function abrirModalAulaAvulsa() {
 
   modal.querySelector(".modal-btn-primary").onclick = () => {
     const nome = modal.querySelector("#nome").value;
+    const telefone = modal.querySelector("#telefone").value;
     const valor = Number(modal.querySelector("#valor").value);
+    const formaPagamento = modal.querySelector("#forma").value;
+    const dataInput = modal.querySelector("#data").value;
+    const dataAtual = dataInput ? new Date(dataInput + "T12:00:00").toISOString() : new Date().toISOString();
 
     if (!nome) {
-      alert("Nome é obrigatório!");
+      alert("Nome e obrigatorio!");
       return;
     }
     if (!valor) {
-      alert("Valor é obrigatório!");
+      alert("Valor e obrigatorio!");
       return;
     }
 
+    const caixaId = crypto.randomUUID();
+    const numeroRecibo = gerarNumeroRecibo();
+
     DataStore.state.data.caixa.push({
-      id: crypto.randomUUID(),
-      data: modal.querySelector("#data").value || new Date().toISOString(),
+      id: caixaId,
+      data: dataAtual,
       tipo: "entrada",
       descricao: "Aula avulsa",
       aluno_nome: nome,
-      telefone: modal.querySelector("#telefone").value,
+      telefone: telefone,
       valor: valor,
-      forma_pagamento: modal.querySelector("#forma").value,
+      forma_pagamento: formaPagamento,
     });
 
+    const reciboData = {
+      id: crypto.randomUUID(),
+      numero: numeroRecibo,
+      pagamentoId: caixaId,
+      nomeAluno: nome,
+      telefoneAluno: telefone,
+      valor: valor,
+      descricaoServico: "aula avulsa",
+      formaPagamento: formaPagamento,
+      data: dataAtual,
+      tipo: "aula_avulsa",
+    };
+
+    DataStore.state.data.recibos.push(reciboData);
     DataStore.save();
     overlay.remove();
-    UI.navigate("caixa");
+
+    abrirModalReciboGerado(reciboData);
   };
 
   overlay.appendChild(modal);
