@@ -14,8 +14,8 @@ const DataStore = {
       turmas: [],
       unidades: [],
       professores: [],
-      monitores: [],
       mensalidades: [],
+      recibos: [],
       caixa: [],
       lixeira: [],
       config: {
@@ -57,9 +57,23 @@ const DataStore = {
     return this.state.data.mensalidades.filter(m => m.status === status).length;
   },
 
-  /** Soma total do caixa */
-  totalCaixa() {
-    return this.state.data.caixa.reduce((sum, c) => sum + (c.valor || 0), 0);
+  /** Calcula total de entradas no caixa */
+  totalEntradas() {
+    return this.state.data.caixa
+      .filter(c => c.tipo === "entrada")
+      .reduce((sum, c) => sum + (c.valor || 0), 0);
+  },
+
+  /** Calcula total de saídas no caixa */
+  totalSaidas() {
+    return this.state.data.caixa
+      .filter(c => c.tipo === "saida")
+      .reduce((sum, c) => sum + (c.valor || 0), 0);
+  },
+
+  /** Calcula saldo atual */
+  saldoAtual() {
+    return this.totalEntradas() - this.totalSaidas();
   },
 
   /** Busca item por ID em uma entidade */
@@ -100,6 +114,7 @@ const UI = {
       ["unidades", "Unidades"],
       ["professores", "Professores"],
       ["mensalidades", "Mensalidades"],
+      ["recibos", "Recibos"],
       ["caixa", "Caixa"],
       ["lixeira", "Lixeira"],
       ["config", "Configurações"],
@@ -132,6 +147,7 @@ const UI = {
       unidades: "Unidades",
       professores: "Professores",
       mensalidades: "Mensalidades",
+      recibos: "Recibos",
       caixa: "Caixa",
       lixeira: "Lixeira",
       config: "Configurações",
@@ -185,6 +201,12 @@ function criarGridCards() {
   return grid;
 }
 
+/** Gera número do recibo */
+function gerarNumeroRecibo() {
+  const num = DataStore.state.data.recibos.length + 1;
+  return String(num).padStart(5, "0");
+}
+
 /* =========================
    RENDERIZADORES DE PÁGINA
 ========================= */
@@ -201,7 +223,7 @@ const pagesRenderers = {
       ["Unidades", DataStore.count("unidades")],
       ["Professores", DataStore.count("professores")],
       ["Mensalidades Pendentes", DataStore.countMensalidades("pendente")],
-      ["Total Caixa", formatarReais(DataStore.totalCaixa())],
+      ["Saldo Atual", formatarReais(DataStore.saldoAtual())],
     ];
 
     cards.forEach(([title, value]) => {
@@ -237,6 +259,10 @@ const pagesRenderers = {
     renderMensalidades();
   },
 
+  recibos() {
+    renderRecibos();
+  },
+
   caixa() {
     renderCaixa();
   },
@@ -265,7 +291,6 @@ function renderAlunos() {
   btn.onclick = () => abrirModalAluno();
   header.appendChild(btn);
 
-  // Filtro por status
   const selectStatus = document.createElement("select");
   selectStatus.style.padding = "0.5rem";
   selectStatus.innerHTML = `
@@ -276,7 +301,6 @@ function renderAlunos() {
   selectStatus.onchange = () => renderCardsAlunos(selectStatus.value, inputBusca.value);
   header.appendChild(selectStatus);
 
-  // Filtro por nome
   const inputBusca = document.createElement("input");
   inputBusca.placeholder = "Buscar por nome...";
   inputBusca.style.padding = "0.5rem";
@@ -335,7 +359,7 @@ function renderCardsAlunos(statusFiltro, buscaNome) {
       <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
         📞 ${aluno.telefone || "Não informado"}<br>
         🕺 ${turma ? `${turma.nome} (${turma.nivel})` : "Sem turma"}<br>
-        🏢 ${unidade?.nome || turma?.unidade || "Não informado"}<br>
+        🏢 ${unidade?.nome || turma?.unidade || aluno.unidade || "-"}<br>
         💰 ${formatarReais(aluno.mensalidade)}<br>
         📋 ${aluno.tipo || "Normal"}
       </p>
@@ -385,6 +409,8 @@ function abrirModalAluno(alunoExistente = null) {
   modal.className = "modal-card";
 
   const isEdicao = !!alunoExistente;
+  const turmaAtual = alunoExistente ? DataStore.findById("turmas", alunoExistente.turma) : null;
+  const unidadeAtual = turmaAtual ? DataStore.findById("unidades", turmaAtual.unidade_id) : null;
 
   modal.innerHTML = `
     <h2 class="modal-title">${isEdicao ? "Editar Aluno" : "Novo Aluno"}</h2>
@@ -396,15 +422,20 @@ function abrirModalAluno(alunoExistente = null) {
       </div>
 
       <div class="field">
-        <label>Telefone</label>
+        <label>Telefone *</label>
         <input id="telefone" placeholder="(00) 00000-0000" value="${alunoExistente?.telefone || ""}">
       </div>
 
       <div class="field">
-        <label>Turma</label>
+        <label>Turma *</label>
         <select id="turma">
           <option value="">Selecione uma turma</option>
         </select>
+      </div>
+
+      <div class="field">
+        <label>Unidade</label>
+        <input id="unidade" readonly style="background: #f1f5f9;" value="${unidadeAtual?.nome || turmaAtual?.unidade || ""}">
       </div>
 
       <div class="field">
@@ -431,6 +462,9 @@ function abrirModalAluno(alunoExistente = null) {
   modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
 
   const selectTurma = modal.querySelector("#turma");
+  const inputUnidade = modal.querySelector("#unidade");
+
+  // Popular select de turmas
   DataStore.state.data.turmas
     .filter(t => t.ativa !== false)
     .forEach(turma => {
@@ -441,19 +475,40 @@ function abrirModalAluno(alunoExistente = null) {
       selectTurma.appendChild(option);
     });
 
-  modal.querySelector(".modal-btn-primary").onclick = () => {
-    const dados = {
-      nome: modal.querySelector("#nome").value,
-      telefone: modal.querySelector("#telefone").value,
-      turma: selectTurma.value,
-      tipo: modal.querySelector("#tipo").value,
-      mensalidade: Number(modal.querySelector("#mensalidade").value),
-    };
+  // Atualizar unidade ao mudar turma
+  selectTurma.onchange = () => {
+    const turmaId = selectTurma.value;
+    const turma = DataStore.findById("turmas", turmaId);
+    const unidade = turma ? DataStore.findById("unidades", turma.unidade_id) : null;
+    inputUnidade.value = unidade?.nome || turma?.unidade || "";
+  };
 
-    if (!dados.nome) {
+  modal.querySelector(".modal-btn-primary").onclick = () => {
+    const nome = modal.querySelector("#nome").value;
+    const telefone = modal.querySelector("#telefone").value;
+    const turmaId = selectTurma.value;
+
+    if (!nome) {
       alert("Nome é obrigatório!");
       return;
     }
+    if (!telefone) {
+      alert("Telefone é obrigatório!");
+      return;
+    }
+    if (!turmaId) {
+      alert("Selecione uma turma!");
+      return;
+    }
+
+    const dados = {
+      nome: nome,
+      telefone: telefone,
+      turma: turmaId,
+      unidade: inputUnidade.value,
+      tipo: modal.querySelector("#tipo").value,
+      mensalidade: Number(modal.querySelector("#mensalidade").value),
+    };
 
     if (isEdicao) {
       Object.assign(alunoExistente, dados);
@@ -490,7 +545,6 @@ function renderTurmas() {
   btn.onclick = () => abrirModalTurma();
   header.appendChild(btn);
 
-  // Filtro por unidade
   const selectUnidade = document.createElement("select");
   selectUnidade.style.padding = "0.5rem";
   selectUnidade.innerHTML = '<option value="">Todas as Unidades</option>';
@@ -519,7 +573,7 @@ function renderCardsTurmas(unidadeFiltro) {
   let turmas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
 
   if (unidadeFiltro) {
-    turmas = turmas.filter(t => t.unidade_id === unidadeFiltro || t.unidade === unidadeFiltro);
+    turmas = turmas.filter(t => t.unidade_id === unidadeFiltro);
   }
 
   if (turmas.length === 0) {
@@ -540,14 +594,16 @@ function renderCardsTurmas(unidadeFiltro) {
     const card = document.createElement("div");
     card.className = "summary-card";
     card.innerHTML = `
-      <strong style="font-size: 1.1rem;">${turma.nome}</strong>
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <strong style="font-size: 1.1rem;">${turma.nome}</strong>
+        <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: #f0fdf4; color: #16a34a;">Ativa</span>
+      </div>
       <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
         📊 Nível: ${turma.nivel}<br>
         🏢 Unidade: ${unidade?.nome || turma.unidade || "-"}<br>
         🕐 Horário: ${turma.horario || "-"}<br>
         👨‍🏫 Professor: ${professor?.nome || "-"}<br>
-        👥 Monitores: ${monitoresNomes || "-"}<br>
-        ${turma.descricao ? `📝 ${turma.descricao}` : ""}
+        👥 Monitores: ${monitoresNomes || "-"}
       </p>
       <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;"></div>
     `;
@@ -607,7 +663,7 @@ function abrirModalTurma(turmaExistente = null) {
       </div>
 
       <div class="field">
-        <label>Unidade</label>
+        <label>Unidade *</label>
         <select id="unidade">
           <option value="">Selecione</option>
         </select>
@@ -630,11 +686,6 @@ function abrirModalTurma(turmaExistente = null) {
         <select id="monitores" multiple style="min-height: 70px;">
         </select>
         <small>Ctrl+Click para múltiplos</small>
-      </div>
-
-      <div class="field" style="grid-column: span 2;">
-        <label>Descrição</label>
-        <input id="descricao" placeholder="Descrição da turma" value="${turmaExistente?.descricao || ""}">
       </div>
     </div>
 
@@ -683,23 +734,30 @@ function abrirModalTurma(turmaExistente = null) {
     });
 
   modal.querySelector(".modal-btn-primary").onclick = () => {
-    const monitoresSelecionados = Array.from(selectMonitores.selectedOptions).map(o => o.value);
+    const nome = modal.querySelector("#nome").value;
+    const unidadeId = selectUnidade.value;
 
-    const dados = {
-      nome: modal.querySelector("#nome").value,
-      nivel: modal.querySelector("#nivel").value,
-      unidade_id: selectUnidade.value,
-      unidade: selectUnidade.options[selectUnidade.selectedIndex]?.text || "",
-      horario: modal.querySelector("#horario").value,
-      professor_id: selectProfessor.value || null,
-      monitores_ids: monitoresSelecionados,
-      descricao: modal.querySelector("#descricao").value,
-    };
-
-    if (!dados.nome) {
+    if (!nome) {
       alert("Nome é obrigatório!");
       return;
     }
+    if (!unidadeId) {
+      alert("Selecione uma unidade!");
+      return;
+    }
+
+    const unidade = DataStore.findById("unidades", unidadeId);
+    const monitoresSelecionados = Array.from(selectMonitores.selectedOptions).map(o => o.value);
+
+    const dados = {
+      nome: nome,
+      nivel: modal.querySelector("#nivel").value,
+      unidade_id: unidadeId,
+      unidade: unidade?.nome || "",
+      horario: modal.querySelector("#horario").value,
+      professor_id: selectProfessor.value || null,
+      monitores_ids: monitoresSelecionados,
+    };
 
     if (isEdicao) {
       Object.assign(turmaExistente, dados);
@@ -737,10 +795,22 @@ function renderUnidades() {
 
   UI.content.appendChild(header);
 
+  const container = document.createElement("div");
+  container.id = "unidades-container";
+  UI.content.appendChild(container);
+
+  renderCardsUnidades();
+}
+
+/** Renderiza cards de unidades */
+function renderCardsUnidades() {
+  const container = document.getElementById("unidades-container");
+  container.innerHTML = "";
+
   const unidades = DataStore.state.data.unidades.filter(u => u.ativa !== false);
 
   if (unidades.length === 0) {
-    UI.content.innerHTML += '<p style="color: #64748b;">Nenhuma unidade cadastrada.</p>';
+    container.innerHTML = '<p style="color: #64748b;">Nenhuma unidade cadastrada.</p>';
     return;
   }
 
@@ -785,7 +855,7 @@ function renderUnidades() {
     grid.appendChild(card);
   });
 
-  UI.content.appendChild(grid);
+  container.appendChild(grid);
 }
 
 /** Modal para criar/editar unidade */
@@ -820,15 +890,17 @@ function abrirModalUnidade(unidadeExistente = null) {
   modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
 
   modal.querySelector(".modal-btn-primary").onclick = () => {
-    const dados = {
-      nome: modal.querySelector("#nome").value,
-      endereco: modal.querySelector("#endereco").value,
-    };
+    const nome = modal.querySelector("#nome").value;
 
-    if (!dados.nome) {
+    if (!nome) {
       alert("Nome é obrigatório!");
       return;
     }
+
+    const dados = {
+      nome: nome,
+      endereco: modal.querySelector("#endereco").value,
+    };
 
     if (isEdicao) {
       Object.assign(unidadeExistente, dados);
@@ -866,10 +938,22 @@ function renderProfessores() {
 
   UI.content.appendChild(header);
 
+  const container = document.createElement("div");
+  container.id = "professores-container";
+  UI.content.appendChild(container);
+
+  renderCardsProfessores();
+}
+
+/** Renderiza cards de professores */
+function renderCardsProfessores() {
+  const container = document.getElementById("professores-container");
+  container.innerHTML = "";
+
   const professores = DataStore.state.data.professores.filter(p => p.ativo !== false);
 
   if (professores.length === 0) {
-    UI.content.innerHTML += '<p style="color: #64748b;">Nenhum professor cadastrado.</p>';
+    container.innerHTML = '<p style="color: #64748b;">Nenhum professor cadastrado.</p>';
     return;
   }
 
@@ -920,7 +1004,7 @@ function renderProfessores() {
     grid.appendChild(card);
   });
 
-  UI.content.appendChild(grid);
+  container.appendChild(grid);
 }
 
 /** Modal para criar/editar professor */
@@ -963,16 +1047,18 @@ function abrirModalProfessor(profExistente = null) {
   modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
 
   modal.querySelector(".modal-btn-primary").onclick = () => {
-    const dados = {
-      nome: modal.querySelector("#nome").value,
-      funcao: modal.querySelector("#funcao").value,
-      telefone: modal.querySelector("#telefone").value,
-    };
+    const nome = modal.querySelector("#nome").value;
 
-    if (!dados.nome) {
+    if (!nome) {
       alert("Nome é obrigatório!");
       return;
     }
+
+    const dados = {
+      nome: nome,
+      funcao: modal.querySelector("#funcao").value,
+      telefone: modal.querySelector("#telefone").value,
+    };
 
     if (isEdicao) {
       Object.assign(profExistente, dados);
@@ -1004,11 +1090,10 @@ function renderMensalidades() {
 
   const btn = document.createElement("button");
   btn.className = "btn-primary";
-  btn.textContent = "+ Registrar Mensalidade";
+  btn.textContent = "+ Nova Mensalidade";
   btn.onclick = () => abrirModalMensalidade();
   header.appendChild(btn);
 
-  // Filtro por status
   const selectStatus = document.createElement("select");
   selectStatus.style.padding = "0.5rem";
   selectStatus.innerHTML = `
@@ -1039,7 +1124,6 @@ function renderCardsMensalidades(statusFiltro) {
     mensalidades = mensalidades.filter(m => m.status === statusFiltro);
   }
 
-  // Ordenar por data (mais recentes primeiro)
   mensalidades.sort((a, b) => {
     const dataA = `${a.ano}-${a.mes}`;
     const dataB = `${b.ano}-${b.mes}`;
@@ -1118,7 +1202,7 @@ function abrirModalMensalidade(mensExistente = null) {
       </div>
 
       <div class="field">
-        <label>Competência (Mês/Ano) *</label>
+        <label>Competência (MM/AAAA) *</label>
         <div style="display: flex; gap: 0.5rem;">
           <select id="mes" style="flex: 1;">
             ${["01","02","03","04","05","06","07","08","09","10","11","12"].map(m => 
@@ -1174,19 +1258,26 @@ function abrirModalMensalidade(mensExistente = null) {
     });
 
   modal.querySelector(".modal-btn-primary").onclick = () => {
+    const alunoId = selectAluno.value;
+    const valor = Number(modal.querySelector("#valor").value);
+
+    if (!alunoId) {
+      alert("Selecione um aluno!");
+      return;
+    }
+    if (!valor) {
+      alert("Informe o valor!");
+      return;
+    }
+
     const dados = {
-      aluno_id: selectAluno.value,
+      aluno_id: alunoId,
       mes: modal.querySelector("#mes").value,
       ano: modal.querySelector("#ano").value,
-      valor: Number(modal.querySelector("#valor").value),
+      valor: valor,
       status: modal.querySelector("#status").value,
       forma_pagamento: modal.querySelector("#forma").value,
     };
-
-    if (!dados.aluno_id || !dados.valor) {
-      alert("Aluno e valor são obrigatórios!");
-      return;
-    }
 
     if (isEdicao) {
       Object.assign(mensExistente, dados);
@@ -1243,22 +1334,46 @@ function abrirModalPagamento(mensalidade) {
 
   modal.querySelector(".modal-btn-primary").onclick = () => {
     const formaPagamento = modal.querySelector("#forma").value;
+    const dataAtual = new Date().toISOString();
+    const numeroRecibo = gerarNumeroRecibo();
 
     // Atualiza mensalidade
     mensalidade.status = "paga";
     mensalidade.forma_pagamento = formaPagamento;
-    mensalidade.data_pagamento = new Date().toISOString();
+    mensalidade.data_pagamento = dataAtual;
 
-    // Lança no caixa
+    // Gera recibo
+    const textoRecibo = `RECIBO Nº ${numeroRecibo}
+
+Recebemos de ${aluno?.nome || "N/A"} a quantia de ${formatarReais(mensalidade.valor)} referente à mensalidade de ${mensalidade.mes}/${mensalidade.ano}.
+
+Forma de pagamento: ${formaPagamento}
+Data: ${formatarData(dataAtual)}
+
+Bailado Carioca`;
+
+    DataStore.state.data.recibos.push({
+      id: crypto.randomUUID(),
+      numero: numeroRecibo,
+      aluno_id: mensalidade.aluno_id,
+      aluno_nome: aluno?.nome || "N/A",
+      competencia: `${mensalidade.mes}/${mensalidade.ano}`,
+      valor: mensalidade.valor,
+      forma_pagamento: formaPagamento,
+      data: dataAtual,
+      texto: textoRecibo,
+    });
+
+    // Lança no caixa como entrada
     DataStore.state.data.caixa.push({
       id: crypto.randomUUID(),
-      data: new Date().toISOString(),
-      tipo: "mensalidade",
+      data: dataAtual,
+      tipo: "entrada",
+      descricao: `Mensalidade ${mensalidade.mes}/${mensalidade.ano} - ${aluno?.nome || "N/A"}`,
       aluno_id: mensalidade.aluno_id,
       aluno_nome: aluno?.nome || "N/A",
       valor: mensalidade.valor,
       forma_pagamento: formaPagamento,
-      descricao: `Mensalidade ${mensalidade.mes}/${mensalidade.ano}`,
     });
 
     DataStore.save();
@@ -1271,32 +1386,127 @@ function abrirModalPagamento(mensalidade) {
 }
 
 /* =========================
+   RECIBOS
+========================= */
+
+/** Renderiza página de recibos */
+function renderRecibos() {
+  const recibos = [...DataStore.state.data.recibos].sort((a, b) => 
+    new Date(b.data) - new Date(a.data)
+  );
+
+  if (recibos.length === 0) {
+    UI.content.innerHTML = '<p style="color: #64748b;">Nenhum recibo gerado.</p>';
+    return;
+  }
+
+  const grid = criarGridCards();
+
+  recibos.forEach(recibo => {
+    const card = document.createElement("div");
+    card.className = "summary-card";
+    card.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: start;">
+        <strong style="font-size: 1.1rem;">Recibo #${recibo.numero}</strong>
+        <span style="color: #16a34a; font-weight: 600;">${formatarReais(recibo.valor)}</span>
+      </div>
+      <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
+        👤 ${recibo.aluno_nome}<br>
+        📅 Competência: ${recibo.competencia}<br>
+        💳 ${recibo.forma_pagamento}<br>
+        🗓️ ${formatarData(recibo.data)}
+      </p>
+      <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;"></div>
+    `;
+
+    const acoes = card.querySelector("div:last-child");
+
+    const btnVer = document.createElement("button");
+    btnVer.className = "btn-secondary";
+    btnVer.textContent = "Ver Recibo";
+    btnVer.onclick = () => exibirRecibo(recibo);
+    acoes.appendChild(btnVer);
+
+    grid.appendChild(card);
+  });
+
+  UI.content.appendChild(grid);
+}
+
+/** Exibe recibo em modal */
+function exibirRecibo(recibo) {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+
+  modal.innerHTML = `
+    <h2 class="modal-title">Recibo #${recibo.numero}</h2>
+    <pre style="background: #f8fafc; padding: 1rem; border-radius: 8px; white-space: pre-wrap; font-family: monospace; font-size: 0.9rem;">${recibo.texto}</pre>
+    <div class="modal-actions">
+      <button class="modal-btn-secondary">Fechar</button>
+    </div>
+  `;
+
+  modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+/* =========================
    CAIXA (FINANCEIRO)
 ========================= */
 
 /** Renderiza página do caixa */
 function renderCaixa() {
   const header = document.createElement("div");
-  header.style.cssText = "margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center;";
+  header.style.cssText = "margin-bottom: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;";
 
-  const btn = document.createElement("button");
-  btn.className = "btn-primary";
-  btn.textContent = "+ Aula Avulsa";
-  btn.onclick = () => abrirModalAulaAvulsa();
-  header.appendChild(btn);
+  const btnEntrada = document.createElement("button");
+  btnEntrada.className = "btn-primary";
+  btnEntrada.textContent = "+ Entrada";
+  btnEntrada.onclick = () => abrirModalCaixa("entrada");
+  header.appendChild(btnEntrada);
+
+  const btnSaida = document.createElement("button");
+  btnSaida.className = "btn-secondary";
+  btnSaida.style.background = "#fef2f2";
+  btnSaida.style.color = "#dc2626";
+  btnSaida.textContent = "- Saída";
+  btnSaida.onclick = () => abrirModalCaixa("saida");
+  header.appendChild(btnSaida);
+
+  const btnAula = document.createElement("button");
+  btnAula.className = "btn-secondary";
+  btnAula.textContent = "Aula Avulsa";
+  btnAula.onclick = () => abrirModalAulaAvulsa();
+  header.appendChild(btnAula);
 
   UI.content.appendChild(header);
 
-  // Resumo
-  const total = DataStore.totalCaixa();
-  const resumo = document.createElement("div");
-  resumo.className = "summary-card";
-  resumo.style.marginBottom = "1.5rem";
-  resumo.innerHTML = `
-    <span class="card-title">Total de Entradas</span>
-    <span class="card-value">${formatarReais(total)}</span>
+  // Resumo financeiro
+  const totalEntradas = DataStore.totalEntradas();
+  const totalSaidas = DataStore.totalSaidas();
+  const saldo = DataStore.saldoAtual();
+
+  const resumoGrid = document.createElement("div");
+  resumoGrid.className = "dashboard-cards";
+  resumoGrid.style.marginBottom = "1.5rem";
+  resumoGrid.innerHTML = `
+    <div class="summary-card">
+      <span class="card-title">Total Entradas</span>
+      <span class="card-value" style="color: #16a34a;">${formatarReais(totalEntradas)}</span>
+    </div>
+    <div class="summary-card">
+      <span class="card-title">Total Saídas</span>
+      <span class="card-value" style="color: #dc2626;">${formatarReais(totalSaidas)}</span>
+    </div>
+    <div class="summary-card">
+      <span class="card-title">Saldo Atual</span>
+      <span class="card-value" style="color: ${saldo >= 0 ? "#16a34a" : "#dc2626"};">${formatarReais(saldo)}</span>
+    </div>
   `;
-  UI.content.appendChild(resumo);
+  UI.content.appendChild(resumoGrid);
 
   // Lista de lançamentos
   const lancamentos = [...DataStore.state.data.caixa].sort((a, b) => 
@@ -1311,18 +1521,21 @@ function renderCaixa() {
   const grid = criarGridCards();
 
   lancamentos.forEach(lanc => {
+    const isEntrada = lanc.tipo === "entrada";
+
     const card = document.createElement("div");
     card.className = "summary-card";
     card.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: start;">
-        <strong>${lanc.tipo === "mensalidade" ? "Mensalidade" : "Aula Avulsa"}</strong>
-        <span style="color: #16a34a; font-weight: 600;">${formatarReais(lanc.valor)}</span>
+        <strong>${lanc.descricao || (isEntrada ? "Entrada" : "Saída")}</strong>
+        <span style="color: ${isEntrada ? "#16a34a" : "#dc2626"}; font-weight: 600;">
+          ${isEntrada ? "+" : "-"}${formatarReais(lanc.valor)}
+        </span>
       </div>
       <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
         📅 ${formatarData(lanc.data)}<br>
-        👤 ${lanc.aluno_nome || "-"}<br>
-        💳 ${lanc.forma_pagamento || "-"}<br>
-        ${lanc.descricao ? `📝 ${lanc.descricao}` : ""}
+        ${lanc.aluno_nome ? `👤 ${lanc.aluno_nome}<br>` : ""}
+        💳 ${lanc.forma_pagamento || "-"}
         ${lanc.telefone ? `<br>📞 ${lanc.telefone}` : ""}
       </p>
     `;
@@ -1330,6 +1543,83 @@ function renderCaixa() {
   });
 
   UI.content.appendChild(grid);
+}
+
+/** Modal para entrada ou saída no caixa */
+function abrirModalCaixa(tipo) {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+
+  const isEntrada = tipo === "entrada";
+
+  modal.innerHTML = `
+    <h2 class="modal-title">${isEntrada ? "Nova Entrada" : "Nova Saída"}</h2>
+
+    <div class="modal-grid">
+      <div class="field">
+        <label>Descrição *</label>
+        <input id="descricao" placeholder="Descrição do lançamento">
+      </div>
+
+      <div class="field">
+        <label>Valor (R$) *</label>
+        <input id="valor" type="number" placeholder="0.00">
+      </div>
+
+      <div class="field">
+        <label>Data</label>
+        <input id="data" type="date" value="${new Date().toISOString().split("T")[0]}">
+      </div>
+
+      <div class="field">
+        <label>Forma de Pagamento</label>
+        <select id="forma">
+          <option value="Pix">Pix</option>
+          <option value="Dinheiro">Dinheiro</option>
+          <option value="Cartão">Cartão</option>
+          <option value="Transferência">Transferência</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-btn-secondary">Cancelar</button>
+      <button class="modal-btn-primary">Registrar</button>
+    </div>
+  `;
+
+  modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
+
+  modal.querySelector(".modal-btn-primary").onclick = () => {
+    const descricao = modal.querySelector("#descricao").value;
+    const valor = Number(modal.querySelector("#valor").value);
+
+    if (!descricao) {
+      alert("Descrição é obrigatória!");
+      return;
+    }
+    if (!valor) {
+      alert("Valor é obrigatório!");
+      return;
+    }
+
+    DataStore.state.data.caixa.push({
+      id: crypto.randomUUID(),
+      data: modal.querySelector("#data").value || new Date().toISOString(),
+      tipo: tipo,
+      descricao: descricao,
+      valor: valor,
+      forma_pagamento: modal.querySelector("#forma").value,
+    });
+
+    DataStore.save();
+    overlay.remove();
+    UI.navigate("caixa");
+  };
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
 }
 
 /** Modal para aula avulsa */
@@ -1384,20 +1674,24 @@ function abrirModalAulaAvulsa() {
     const nome = modal.querySelector("#nome").value;
     const valor = Number(modal.querySelector("#valor").value);
 
-    if (!nome || !valor) {
-      alert("Nome e valor são obrigatórios!");
+    if (!nome) {
+      alert("Nome é obrigatório!");
+      return;
+    }
+    if (!valor) {
+      alert("Valor é obrigatório!");
       return;
     }
 
     DataStore.state.data.caixa.push({
       id: crypto.randomUUID(),
       data: modal.querySelector("#data").value || new Date().toISOString(),
-      tipo: "aula_avulsa",
+      tipo: "entrada",
+      descricao: "Aula avulsa",
       aluno_nome: nome,
       telefone: modal.querySelector("#telefone").value,
       valor: valor,
       forma_pagamento: modal.querySelector("#forma").value,
-      descricao: "Aula avulsa",
     });
 
     DataStore.save();
@@ -1455,7 +1749,7 @@ function renderLixeira() {
       const itemOriginal = DataStore.state.data[entidade].find(i => i.id === item.id);
       
       if (itemOriginal) {
-        if (entidade === "turmas") {
+        if (entidade === "turmas" || entidade === "unidades") {
           itemOriginal.ativa = true;
         } else {
           itemOriginal.ativo = true;
@@ -1473,14 +1767,11 @@ function renderLixeira() {
     btnExcluirDef.textContent = "Excluir Definitivo";
     btnExcluirDef.onclick = () => {
       if (confirm("Excluir permanentemente? Esta ação não pode ser desfeita.")) {
-        // Remove da entidade original
         const entidade = item._entidade;
         const idx = DataStore.state.data[entidade].findIndex(i => i.id === item.id);
         if (idx !== -1) {
           DataStore.state.data[entidade].splice(idx, 1);
         }
-
-        // Remove da lixeira
         DataStore.state.data.lixeira.splice(index, 1);
         DataStore.save();
         UI.navigate("lixeira");
