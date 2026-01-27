@@ -1,0 +1,174 @@
+Você é um desenvolvedor senior frontend.
+
+Estou desenvolvendo um sistema de gestão para uma escola de dança (Bailado Carioca), usando APENAS:
+- HTML
+- CSS (já existente, não reescrever)
+- JavaScript puro
+- localStorage
+
+O projeto já possui:
+- DataStore centralizado
+- UI.navigate para navegação
+- Modais customizados
+- CRUD funcional para Alunos e Turmas
+- Dashboard com cards
+- Soft delete (ativo / ativa)
+
+⚠️ REGRAS OBRIGATÓRIAS:
+1. NÃO reescreva o projeto do zero
+2. NÃO apague funcionalidades existentes
+3. NÃO altere style.css
+4. Trabalhe SEM frameworks
+5. Implemente de forma incremental
+6. Mantenha compatibilidade total com o código atual
+7. Use comentários claros em TODAS as funções novas
+8. Se algo já existir, reaproveite
+
+---
+
+## IMPLEMENTAÇÕES NECESSÁRIAS
+
+### 1️⃣ TRANCAMENTO DE MATRÍCULA
+- Aluno pode estar:
+  - ativo
+  - trancado
+- Trancado:
+  - não aparece como ativo
+  - não gera mensalidade
+  - continua no histórico
+- Implementar botão:
+  - "Trancar matrícula"
+  - "Reativar matrícula"
+
+---
+
+### 2️⃣ CADASTRO DE PROFESSORES
+- Criar aba Professores funcional
+- Campos:
+  - Nome
+  - Telefone
+  - Especialidade
+  - Ativo (checkbox)
+- CRUD completo:
+  - Criar
+  - Editar
+  - Excluir (soft delete)
+
+---
+
+### 3️⃣ CADASTRO DE MONITORES
+- Pode ser:
+  - Professor
+  - Aluno monitor
+- Campos:
+  - Nome
+  - Tipo (Professor / Aluno)
+  - Turmas vinculadas
+- CRUD completo
+
+---
+
+### 4️⃣ VÍNCULO PROFESSOR ↔ TURMA
+- Cada turma deve ter:
+  - 1 professor responsável
+- Select dinâmico:
+  - puxar professores ativos
+- Mostrar no card da turma
+
+---
+
+### 5️⃣ VÍNCULO MONITOR ↔ TURMA
+- Turma pode ter vários monitores
+- Select múltiplo
+- Mostrar no card da turma
+
+---
+
+### 6️⃣ EDIÇÃO EM TODAS AS ENTIDADES
+- Alunos
+- Turmas
+- Professores
+- Monitores
+- Mensalidades
+- Usar o MESMO modal de criação para edição
+- Preencher campos automaticamente
+
+---
+
+### 7️⃣ EXCLUSÃO SEGURA (SOFT DELETE)
+- Nunca usar delete real
+- Sempre:
+  - ativo: false
+- Criar aba Lixeira:
+  - listar itens excluídos
+  - permitir restaurar
+
+---
+
+### 8️⃣ FILTROS EM TODAS AS ABAS
+Implementar filtros por:
+- Nome
+- Status (ativo / inativo / trancado)
+- Turma
+- Unidade
+- Professor
+
+Filtro deve:
+- Ser visual (input / select)
+- Atualizar cards dinamicamente
+- Não recarregar página
+
+---
+
+### 9️⃣ ABA MENSALIDADES (COMPLETA)
+Funcionalidades obrigatórias:
+- Gerar mensalidade por aluno
+- Mês / Ano
+- Valor
+- Status:
+  - Aberta
+  - Paga
+  - Atrasada
+- Forma de pagamento
+- Vínculo com aluno
+- Histórico
+- Botão "Marcar como pago"
+- Filtro por:
+  - Mês
+  - Status
+  - Aluno
+
+---
+
+### 🔟 DASHBOARD INTELIGENTE
+Dashboard deve mostrar:
+- Alunos ativos
+- Alunos trancados
+- Turmas ativas
+- Mensalidades abertas
+- Mensalidades pagas
+- Caixa total (somatório)
+
+Atualizar automaticamente com base no DataStore
+
+---
+
+### 🧱 ORGANIZAÇÃO DO CÓDIGO
+- Separar funções por domínio:
+  - alunos
+  - turmas
+  - professores
+  - mensalidades
+- Funções pequenas
+- Comentários explicativos
+- Evitar duplicação de lógica
+
+---
+
+### 📌 ENTREGA FINAL
+- Código funcional
+- Preview não pode quebrar
+- Sem erros no console
+- Interface consistente com o style.css atual
+
+Implemente passo a passo, mantendo o sistema estável em cada etapa.
