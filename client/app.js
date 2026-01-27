@@ -537,6 +537,10 @@ function renderCardsAlunosAtivos(buscaNome) {
     const card = document.createElement("div");
     card.className = "summary-card";
     card.style.cursor = "default";
+    const dataMatriculaFormatada = aluno.dataMatricula 
+      ? new Date(aluno.dataMatricula).toLocaleDateString("pt-BR")
+      : "-";
+
     card.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: start;">
         <strong style="font-size: 1.1rem;">${aluno.nome}</strong>
@@ -547,7 +551,8 @@ function renderCardsAlunosAtivos(buscaNome) {
         Turma: ${turma ? `${turma.nome} (${turma.nivel})` : "Sem turma"}<br>
         Unidade: ${unidade?.nome || turma?.unidade || aluno.unidade || "-"}<br>
         Mensalidade: ${formatarReais(aluno.mensalidade)}<br>
-        Tipo: ${aluno.tipoMatricula || aluno.tipo || "Normal"}
+        Tipo: ${aluno.tipoMatricula || aluno.tipo || "Normal"}<br>
+        Matricula: ${dataMatriculaFormatada}
       </p>
       <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;"></div>
     `;
@@ -777,6 +782,7 @@ function abrirModalAluno(alunoExistente = null) {
         ...dados,
         ativo: true,
         status: "ativo",
+        dataMatricula: new Date().toISOString(),
       });
     }
 
