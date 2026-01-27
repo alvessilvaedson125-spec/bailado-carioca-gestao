@@ -2,11 +2,14 @@
 
 ## Overview
 
-This is a management system for a dance school (Bailado Carioca) built as a full-stack TypeScript application. The project uses a React frontend with shadcn/ui components, an Express.js backend, and PostgreSQL for data persistence via Drizzle ORM. The system handles student management, class scheduling, teacher registration, enrollment tracking, and financial operations.
+This is a management system for a dance school (Bailado Carioca) built as a **pure vanilla JavaScript** single-page application. The system uses **localStorage** for data persistence (no backend database). It handles student management, class scheduling, teacher registration, enrollment tracking, and financial operations.
 
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+- Preferred communication style: Simple, everyday language.
+- **NO frameworks** (React, Vue, Next.js explicitly excluded)
+- Card-based UI design
+- Do NOT invent features or generate sample data
 
 ## System Architecture
 

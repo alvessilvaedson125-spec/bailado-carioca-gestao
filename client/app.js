@@ -2582,6 +2582,24 @@ function renderConfig() {
 
     <button class="btn-primary" id="btnSalvarConfig">Salvar Configuracoes</button>
     <span id="msgSalvo" style="margin-left: 1rem; color: #16a34a; display: none;">Salvo com sucesso!</span>
+
+    <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e5e7eb;">
+
+    <h3 style="margin-bottom: 1rem;">Backup e Restauracao</h3>
+    <p style="color: #6b7280; margin-bottom: 1rem; font-size: 0.9rem;">
+      Exporte seus dados para um arquivo JSON para fazer backup. Importe um arquivo de backup para restaurar os dados.
+    </p>
+
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+      <button class="btn-primary" id="btnExportarDados" data-testid="button-export-data" style="background: #16a34a;">
+        Exportar Dados
+      </button>
+      <button class="btn-primary" id="btnImportarDados" data-testid="button-import-data" style="background: #2563eb;">
+        Importar Dados
+      </button>
+      <input type="file" id="inputImportFile" accept=".json" style="display: none;">
+    </div>
+    <p id="msgBackup" style="margin-top: 1rem; color: #16a34a; display: none;"></p>
   `;
 
   container.querySelector("#btnSalvarConfig").onclick = () => {
@@ -2598,7 +2616,141 @@ function renderConfig() {
     setTimeout(() => msg.style.display = "none", 2000);
   };
 
+  // Exportar dados
+  container.querySelector("#btnExportarDados").onclick = () => {
+    exportarDados();
+  };
+
+  // Importar dados
+  const inputFile = container.querySelector("#inputImportFile");
+  container.querySelector("#btnImportarDados").onclick = () => {
+    inputFile.click();
+  };
+
+  inputFile.onchange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      importarDados(file, container.querySelector("#msgBackup"));
+    }
+    inputFile.value = "";
+  };
+
   UI.content.appendChild(container);
+}
+
+/** Exporta todos os dados para arquivo JSON */
+function exportarDados() {
+  const dados = DataStore.state.data;
+  const dataStr = JSON.stringify(dados, null, 2);
+  const blob = new Blob([dataStr], { type: "application/json" });
+  
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+  const timeStr = now.toTimeString().slice(0, 5).replace(":", "");
+  const filename = `bailado_backup_${dateStr}_${timeStr}.json`;
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/** Importa dados de arquivo JSON */
+function importarDados(file, msgElement) {
+  const reader = new FileReader();
+  
+  reader.onload = (e) => {
+    try {
+      const dados = JSON.parse(e.target.result);
+      
+      // Validar estrutura básica do arquivo
+      if (!dados || typeof dados !== "object") {
+        throw new Error("Arquivo invalido");
+      }
+
+      // Verificar se tem pelo menos algumas das entidades esperadas
+      const entidadesEsperadas = ["alunos", "turmas", "unidades", "professores", "mensalidades", "recibos", "caixa", "config"];
+      const entidadesEncontradas = entidadesEsperadas.filter(e => dados[e] !== undefined);
+      
+      if (entidadesEncontradas.length === 0) {
+        throw new Error("Arquivo nao contem dados do Bailado Carioca");
+      }
+
+      // Montar resumo dos dados a serem importados
+      const resumo = [];
+      if (dados.alunos) resumo.push(`${dados.alunos.length} aluno(s)`);
+      if (dados.turmas) resumo.push(`${dados.turmas.length} turma(s)`);
+      if (dados.unidades) resumo.push(`${dados.unidades.length} unidade(s)`);
+      if (dados.professores) resumo.push(`${dados.professores.length} professor(es)`);
+      if (dados.mensalidades) resumo.push(`${dados.mensalidades.length} mensalidade(s)`);
+      if (dados.recibos) resumo.push(`${dados.recibos.length} recibo(s)`);
+      if (dados.caixa) resumo.push(`${dados.caixa.length} lancamento(s)`);
+
+      const confirmar = confirm(
+        `ATENCAO: Isso vai SUBSTITUIR todos os dados atuais!\n\n` +
+        `Dados a serem importados:\n` +
+        `${resumo.join(", ")}\n\n` +
+        `Deseja continuar?`
+      );
+
+      if (!confirmar) {
+        if (msgElement) {
+          msgElement.style.color = "#6b7280";
+          msgElement.textContent = "Importacao cancelada.";
+          msgElement.style.display = "block";
+          setTimeout(() => msgElement.style.display = "none", 3000);
+        }
+        return;
+      }
+
+      // Fazer merge com estrutura padrão para garantir que todas as entidades existam
+      const dadosCompletos = {
+        alunos: dados.alunos || [],
+        turmas: dados.turmas || [],
+        unidades: dados.unidades || [],
+        professores: dados.professores || [],
+        mensalidades: dados.mensalidades || [],
+        recibos: dados.recibos || [],
+        caixa: dados.caixa || [],
+        lixeira: dados.lixeira || [],
+        config: dados.config || { nomeProjeto: "Bailado Carioca", observacoes: "" },
+      };
+
+      // Salvar no localStorage
+      DataStore.state.data = dadosCompletos;
+      DataStore.save();
+
+      // Migrar alunos para novo sistema de status se necessário
+      DataStore.migrateAlunosStatus();
+
+      alert("Dados importados com sucesso! A pagina sera recarregada.");
+      location.reload();
+
+    } catch (err) {
+      console.error("Erro ao importar:", err);
+      if (msgElement) {
+        msgElement.style.color = "#dc2626";
+        msgElement.textContent = "Erro: arquivo invalido ou corrompido.";
+        msgElement.style.display = "block";
+        setTimeout(() => msgElement.style.display = "none", 5000);
+      }
+    }
+  };
+
+  reader.onerror = () => {
+    if (msgElement) {
+      msgElement.style.color = "#dc2626";
+      msgElement.textContent = "Erro ao ler o arquivo.";
+      msgElement.style.display = "block";
+      setTimeout(() => msgElement.style.display = "none", 5000);
+    }
+  };
+
+  reader.readAsText(file);
 }
 
 /* =========================
