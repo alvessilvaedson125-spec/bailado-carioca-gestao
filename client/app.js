@@ -1,193 +1,141 @@
-/**
- * Application Logic
- * Separates Data handling from UI rendering
- */
-
-// --- Entity Schemas (Documentation) ---
-/**
- * Aluno {
- *   id: string,
- *   nome: string,
- *   unidade_id: string,
- *   turma_id: string,
- *   nivel_id: string,
- *   horario: string,
- *   mensalidade_valor: number,
- *   tipo_matricula: "normal" | "casal" | "multiplas_turmas",
- *   ativo: boolean,
- *   created_at: string,
- *   updated_at: string
- * }
- */
-/**
- * Caixa {
- *   id: string,
- *   tipo: "entrada" | "saida",
- *   descricao: string,
- *   valor: number,
- *   data: string
- * }
- */
-
-// --- Data Logic (In-Memory) ---
+/* ===============================
+   DATA STORE
+================================ */
 const DataStore = {
-    state: {
-        currentPage: 'dashboard',
-        data: {
-            alunos: [],
-            turmas: [],
-            unidades: [],
-            professores: [],
-            presenca: [],
-            mensalidades: [],
-            caixa: [],
-            lixeira: []
-        }
+  state: {
+    currentPage: "dashboard",
+    data: {
+      alunos: [],
+      turmas: [],
+      unidades: [],
+      professores: [],
+      presenca: [],
+      mensalidades: [],
+      caixa: [],
     },
+  },
 
-    // Data Getters
-    getCount(entity) {
-        return this.state.data[entity]?.length || 0;
-    },
+  load() {
+    const saved = localStorage.getItem("schoolAppData");
+    if (saved) this.state.data = JSON.parse(saved);
+  },
 
-    getMensalidadesAbertasCount() {
-        return this.state.data.mensalidades.filter(m => m.status === 'aberta').length;
-    },
+  save() {
+    localStorage.setItem("schoolAppData", JSON.stringify(this.state.data));
+  },
 
-    // Pages Configuration
-    pages: [
-        { id: 'dashboard', label: 'Dashboard' },
-        { id: 'alunos', label: 'Alunos' },
-        { id: 'turmas', label: 'Turmas' },
-        { id: 'unidades', label: 'Unidades' },
-        { id: 'professores', label: 'Professores' },
-        { id: 'presenca', label: 'Presença' },
-        { id: 'mensalidades', label: 'Mensalidades' },
-        { id: 'caixa', label: 'Caixa' },
-        { id: 'lixeira', label: 'Lixeira' },
-        { id: 'configuracoes', label: 'Configurações' }
-    ],
-
-    // Actions
-    setCurrentPage(pageId) {
-        if (this.pages.find(p => p.id === pageId)) {
-            this.state.currentPage = pageId;
-            return true;
-        }
-        return false;
-    },
-
-    getCurrentPageInfo() {
-        return this.pages.find(p => p.id === this.state.currentPage);
+  getCount(entity) {
+    if (entity === "alunos") {
+      return this.state.data.alunos.filter(a => a.ativo).length;
     }
+    return this.state.data[entity]?.length || 0;
+  },
+
+  getMensalidadesAbertasCount() {
+    return this.state.data.mensalidades.filter(m => m.status === "aberta").length;
+  },
+
+  pages: [
+    { id: "dashboard", label: "Dashboard" },
+    { id: "alunos", label: "Alunos" },
+    { id: "turmas", label: "Turmas" },
+    { id: "unidades", label: "Unidades" },
+    { id: "professores", label: "Professores" },
+  ],
+
+  setCurrentPage(id) {
+    this.state.currentPage = id;
+  },
+
+  getCurrentPage() {
+    return this.pages.find(p => p.id === this.state.currentPage);
+  }
 };
 
-// --- UI Rendering ---
+/* ===============================
+   UI HELPERS (FORA DO OBJETO)
+================================ */
+function renderEmptyState(pageInfo) {
+  const div = document.createElement("div");
+  div.className = "empty-state";
+  div.innerHTML = `
+    <h3>${pageInfo.label}</h3>
+    <p>Módulo em construção.</p>
+  `;
+  UI.elements.contentArea.appendChild(div);
+}
+
+/* ===============================
+   UI
+================================ */
 const UI = {
-    elements: {
-        menu: document.getElementById('menu'),
-        pageTitle: document.getElementById('page-title'),
-        contentArea: document.getElementById('content-area')
-    },
+  elements: {
+    menu: document.getElementById("menu"),
+    pageTitle: document.getElementById("page-title"),
+    contentArea: document.getElementById("content-area"),
+  },
 
-    init() {
-        this.renderSidebar();
-        this.navigateTo(DataStore.state.currentPage);
-    },
+  init() {
+    this.renderSidebar();
+    this.navigate(DataStore.state.currentPage);
+  },
 
-    renderSidebar() {
-        this.elements.menu.innerHTML = '';
-        DataStore.pages.forEach(page => {
-            const li = document.createElement('li');
-            li.className = `menu-item ${page.id === DataStore.state.currentPage ? 'active' : ''}`;
-            li.textContent = page.label;
-            li.dataset.page = page.id;
-            
-            li.addEventListener('click', () => {
-                this.navigateTo(page.id);
-            });
+  renderSidebar() {
+    this.elements.menu.innerHTML = "";
+    DataStore.pages.forEach(p => {
+      const li = document.createElement("li");
+      li.textContent = p.label;
+      li.className = "menu-item";
+      li.onclick = () => this.navigate(p.id);
+      this.elements.menu.appendChild(li);
+    });
+  },
 
-            this.elements.menu.appendChild(li);
-        });
-    },
+  navigate(pageId) {
+    DataStore.setCurrentPage(pageId);
+    this.renderPage();
+  },
 
-    navigateTo(pageId) {
-        if (DataStore.setCurrentPage(pageId)) {
-            // Update UI state
-            this.updateSidebarActiveState(pageId);
-            this.renderPageContent(pageId);
-        }
-    },
+  renderPage() {
+    const page = DataStore.getCurrentPage();
+    this.elements.pageTitle.textContent = page.label;
+    this.elements.contentArea.innerHTML = "";
 
-    updateSidebarActiveState(pageId) {
-        const items = this.elements.menu.querySelectorAll('.menu-item');
-        items.forEach(item => {
-            if (item.dataset.page === pageId) {
-                item.classList.add('active');
-            } else {
-                item.classList.remove('active');
-            }
-        });
-    },
-
-    renderPageContent(pageId) {
-        const pageInfo = DataStore.getCurrentPageInfo();
-        this.elements.pageTitle.textContent = pageInfo.label;
-        
-        // Clear current content
-        this.elements.contentArea.innerHTML = '';
-
-        // Route to specific page renderer
-        if (pageId === 'dashboard') {
-            this.renderDashboard();
-        } else {
-            this.renderEmptyState(pageInfo);
-        }
-    },
-
-    renderDashboard() {
-        const container = document.createElement('div');
-        container.className = 'dashboard-cards';
-
-        const cards = [
-            { title: 'Total Alunos', value: DataStore.getCount('alunos') },
-            { title: 'Total Turmas', value: DataStore.getCount('turmas') },
-            { title: 'Total Unidades', value: DataStore.getCount('unidades') },
-            { title: 'Mensalidades em Aberto', value: DataStore.getMensalidadesAbertasCount() getSaldoCaixa() {
-                return this.state.data.caixa.reduce((saldo, item) => {
-                    return item.tipo === 'entrada'
-                        ? saldo + item.valor
-                        : saldo - item.valor;
-                }, 0);
-            },
- }
-        ];
-
-        cards.forEach(card => {
-            const cardEl = document.createElement('div');
-            cardEl.className = 'summary-card';
-            cardEl.innerHTML = `
-                <span class="card-title">${card.title}</span>
-                <span class="card-value">${card.value}</span>
-            `;
-            container.appendChild(cardEl);
-        });
-
-        this.elements.contentArea.appendChild(container);
-    },
-
-    renderEmptyState(pageInfo) {
-        const content = document.createElement('div');
-        content.className = 'empty-state';
-        content.innerHTML = `
-            <h3>${pageInfo.label} Module</h3>
-            <p>This is the empty state for the ${pageInfo.label.toLowerCase()} page.</p>
-        `;
-        this.elements.contentArea.appendChild(content);
+    switch (page.id) {
+      case "dashboard":
+        this.renderDashboard();
+        break;
+      case "alunos":
+        this.renderAlunos();
+        break;
+      default:
+        renderEmptyState(page);
     }
+  },
+
+  renderDashboard() {
+    const div = document.createElement("div");
+    div.innerHTML = `
+      <h2>Resumo</h2>
+      <p>Total alunos: ${DataStore.getCount("alunos")}</p>
+    `;
+    this.elements.contentArea.appendChild(div);
+  },
+
+  renderAlunos() {
+    const div = document.createElement("div");
+    div.innerHTML = `
+      <h2>Alunos</h2>
+      <button id="novo">Novo aluno</button>
+    `;
+    this.elements.contentArea.appendChild(div);
+  }
 };
 
-// --- Initialization ---
-document.addEventListener('DOMContentLoaded', () => {
-    UI.init();
+/* ===============================
+   INIT
+================================ */
+document.addEventListener("DOMContentLoaded", () => {
+  DataStore.load();
+  UI.init();
 });
