@@ -209,15 +209,19 @@ function gerarNumeroRecibo() {
 
 /** Template do recibo - texto gerado dinamicamente */
 function gerarTextoRecibo(recibo) {
+  const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "N/A";
+  const descricao = recibo.descricaoServico || recibo.competencia || "servico";
+  const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "N/A";
+  
   return `RECIBO
 
-Confirmo o recebimento de ${formatarReais(recibo.valor)} referente a ${recibo.descricaoServico},
-pago por ${recibo.nomeAluno}.
+Confirmo o recebimento de ${formatarReais(recibo.valor)} referente a ${descricao},
+pago por ${nomeAluno}.
 
-Forma de pagamento: ${recibo.formaPagamento}
+Forma de pagamento: ${formaPgto}
 Data do pagamento: ${formatarData(recibo.data)}
 
-Com isso, dou plena quitação do valor recebido.
+Com isso, dou plena quitacao do valor recebido.
 
 Bailado Carioca`;
 }
@@ -244,8 +248,10 @@ function gerarLinkWhatsApp(telefone, texto) {
 
 /** Gera e baixa PDF do recibo */
 function gerarPDFRecibo(recibo) {
-  const texto = gerarTextoRecibo(recibo);
   const dataGeracao = new Date().toLocaleString("pt-BR");
+  const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "N/A";
+  const descricao = recibo.descricaoServico || recibo.competencia || "servico";
+  const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "N/A";
   
   const htmlContent = `
     <!DOCTYPE html>
@@ -307,13 +313,13 @@ function gerarPDFRecibo(recibo) {
     <body>
       <div class="header">
         <h1>RECIBO</h1>
-        <div class="numero">N° ${recibo.numero}</div>
+        <div class="numero">N ${recibo.numero}</div>
       </div>
       <div class="body">
-        <p>Confirmo o recebimento de <strong>${formatarReais(recibo.valor)}</strong> referente a ${recibo.descricaoServico}, pago por <strong>${recibo.nomeAluno}</strong>.</p>
-        <p><strong>Forma de pagamento:</strong> ${recibo.formaPagamento}</p>
+        <p>Confirmo o recebimento de <strong>${formatarReais(recibo.valor)}</strong> referente a ${descricao}, pago por <strong>${nomeAluno}</strong>.</p>
+        <p><strong>Forma de pagamento:</strong> ${formaPgto}</p>
         <p><strong>Data do pagamento:</strong> ${formatarData(recibo.data)}</p>
-        <p>Com isso, dou plena quitação do valor recebido.</p>
+        <p>Com isso, dou plena quitacao do valor recebido.</p>
       </div>
       <div class="assinatura">Bailado Carioca</div>
       <div class="footer">Gerado em ${dataGeracao}</div>
@@ -1477,6 +1483,11 @@ function abrirModalPagamento(mensalidade) {
     mensalidade.forma_pagamento = formaPagamento;
     mensalidade.data_pagamento = dataAtual;
 
+    const turma = aluno ? DataStore.findById("turmas", aluno.turma) : null;
+    const descricaoServico = turma 
+      ? `mensalidade da turma ${turma.nome} (${turma.nivel})`
+      : `mensalidade de ${mensalidade.mes}/${mensalidade.ano}`;
+
     const reciboData = {
       id: crypto.randomUUID(),
       numero: numeroRecibo,
@@ -1484,7 +1495,7 @@ function abrirModalPagamento(mensalidade) {
       nomeAluno: aluno?.nome || "N/A",
       telefoneAluno: aluno?.telefone || "",
       valor: mensalidade.valor,
-      descricaoServico: `mensalidade de ${mensalidade.mes}/${mensalidade.ano}`,
+      descricaoServico: descricaoServico,
       formaPagamento: formaPagamento,
       data: dataAtual,
       tipo: "mensalidade",
@@ -1587,6 +1598,10 @@ function renderRecibos() {
 
   recibos.forEach(recibo => {
     const tipoLabel = recibo.tipo === "aula_avulsa" ? "Aula Avulsa" : "Mensalidade";
+    const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "N/A";
+    const descricao = recibo.descricaoServico || recibo.competencia || "servico";
+    const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "N/A";
+    const telefone = recibo.telefoneAluno || "";
     
     const card = document.createElement("div");
     card.className = "summary-card";
@@ -1597,9 +1612,9 @@ function renderRecibos() {
       </div>
       <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
         <span style="display: inline-block; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: ${recibo.tipo === "aula_avulsa" ? "#fef9c3" : "#dbeafe"}; color: ${recibo.tipo === "aula_avulsa" ? "#a16207" : "#1d4ed8"}; margin-bottom: 4px;">${tipoLabel}</span><br>
-        ${recibo.nomeAluno}<br>
-        ${recibo.descricaoServico}<br>
-        ${recibo.formaPagamento} - ${formatarData(recibo.data)}
+        ${nomeAluno}<br>
+        ${descricao}<br>
+        ${formaPgto} - ${formatarData(recibo.data)}
       </p>
       <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;"></div>
     `;
@@ -1618,7 +1633,7 @@ function renderRecibos() {
     btnPDF.onclick = () => gerarPDFRecibo(recibo);
     acoes.appendChild(btnPDF);
 
-    const linkWA = gerarLinkWhatsApp(recibo.telefoneAluno, gerarTextoRecibo(recibo));
+    const linkWA = gerarLinkWhatsApp(telefone, gerarTextoRecibo(recibo));
     if (linkWA) {
       const btnWA = document.createElement("button");
       btnWA.className = "btn-secondary";
