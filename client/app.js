@@ -767,9 +767,16 @@ function renderCardsTurmas(unidadeFiltro) {
       .map(id => DataStore.findById("professores", id)?.nome)
       .filter(Boolean)
       .join(", ");
-    const alunosVinculados = DataStore.state.data.alunos
-      .filter(a => a.ativo !== false && a.turma === turma.id)
-      .length;
+    
+    const alunosMatriculados = DataStore.state.data.alunos
+      .filter(a => a.ativo !== false && a.turma === turma.id);
+    
+    const listaAlunosHtml = alunosMatriculados.length > 0
+      ? alunosMatriculados.map(a => {
+          const tipoMatricula = a.tipoMatricula || "Normal";
+          return `<li style="padding: 2px 0;">${a.nome} <span style="color: #94a3b8; font-size: 0.8rem;">(${tipoMatricula})</span></li>`;
+        }).join("")
+      : '<li style="color: #94a3b8;">Nenhum aluno matriculado</li>';
 
     const card = document.createElement("div");
     card.className = "summary-card";
@@ -779,13 +786,18 @@ function renderCardsTurmas(unidadeFiltro) {
         <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: #f0fdf4; color: #16a34a;">Ativa</span>
       </div>
       <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
-        📊 Nivel: ${turma.nivel}<br>
-        🏢 Unidade: ${unidade?.nome || turma.unidade || "-"}<br>
-        🕐 Horario: ${turma.horario || "-"}<br>
-        👨‍🏫 Professor: ${professor?.nome || "-"}<br>
-        👥 Monitores: ${monitoresNomes || "-"}<br>
-        🎓 Alunos: ${alunosVinculados}
+        Nivel: ${turma.nivel}<br>
+        Unidade: ${unidade?.nome || turma.unidade || "-"}<br>
+        Horario: ${turma.horario || "-"}<br>
+        Professor: ${professor?.nome || "-"}<br>
+        Monitores: ${monitoresNomes || "-"}
       </p>
+      <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e2e8f0;">
+        <strong style="font-size: 0.9rem;">Alunos Matriculados (${alunosMatriculados.length}):</strong>
+        <ul style="margin: 0.5rem 0 0 1rem; padding: 0; list-style: disc; color: #475569; font-size: 0.85rem;">
+          ${listaAlunosHtml}
+        </ul>
+      </div>
       <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;"></div>
     `;
 
@@ -2185,12 +2197,27 @@ function gerarRelatorioMensal(mes, ano) {
   `;
   container.appendChild(detalhes);
 
+  const botoesContainer = document.createElement("div");
+  botoesContainer.style.cssText = "display: flex; gap: 1rem; margin-top: 1.5rem;";
+
   const btnPDF = document.createElement("button");
   btnPDF.className = "btn-primary";
-  btnPDF.textContent = "Exportar PDF";
-  btnPDF.style.marginTop = "1rem";
+  btnPDF.textContent = "Baixar PDF";
   btnPDF.onclick = () => gerarPDFRelatorio(mes, ano, totalEntradas, totalSaidas, saldo, mensalidadesEntradas, aulasAvulsas, saidas);
-  container.appendChild(btnPDF);
+  botoesContainer.appendChild(btnPDF);
+
+  const btnImprimir = document.createElement("button");
+  btnImprimir.className = "btn-secondary";
+  btnImprimir.textContent = "Imprimir";
+  btnImprimir.onclick = () => imprimirRelatorio(mes, ano, totalEntradas, totalSaidas, saldo, mensalidadesEntradas, aulasAvulsas, saidas);
+  botoesContainer.appendChild(btnImprimir);
+
+  container.appendChild(botoesContainer);
+}
+
+/** Imprime relatório mensal */
+function imprimirRelatorio(mes, ano, totalEntradas, totalSaidas, saldo, mensalidades, aulas, saidas) {
+  gerarPDFRelatorio(mes, ano, totalEntradas, totalSaidas, saldo, mensalidades, aulas, saidas);
 }
 
 /** Gera PDF do relatório mensal */
