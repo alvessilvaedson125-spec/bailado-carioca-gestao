@@ -116,8 +116,9 @@ const UI = {
       ["mensalidades", "Mensalidades"],
       ["recibos", "Recibos"],
       ["caixa", "Caixa"],
+      ["relatorio", "Relatorio Mensal"],
       ["lixeira", "Lixeira"],
-      ["config", "Configurações"],
+      ["config", "Configuracoes"],
     ];
 
     this.menu.innerHTML = "";
@@ -149,8 +150,9 @@ const UI = {
       mensalidades: "Mensalidades",
       recibos: "Recibos",
       caixa: "Caixa",
+      relatorio: "Relatorio Mensal",
       lixeira: "Lixeira",
-      config: "Configurações",
+      config: "Configuracoes",
     };
 
     this.title.textContent = titulos[page] || page;
@@ -209,21 +211,28 @@ function gerarNumeroRecibo() {
 
 /** Template do recibo - texto gerado dinamicamente */
 function gerarTextoRecibo(recibo) {
+  const config = DataStore.state.data.config || {};
   const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "N/A";
   const descricao = recibo.descricaoServico || recibo.competencia || "servico";
   const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "N/A";
+  const nomeRecebedor = config.nomeRecebedor || "Edson Silva";
+  const cnpj = config.cnpj || "";
+  const nomeProjeto = config.nomeProjeto || "Bailado Carioca";
   
   return `RECIBO
 
-Confirmo o recebimento de ${formatarReais(recibo.valor)} referente a ${descricao},
-pago por ${nomeAluno}.
+Recebi de ${nomeAluno} a quantia de ${formatarReais(recibo.valor)},
+referente a ${descricao}.
 
 Forma de pagamento: ${formaPgto}
 Data do pagamento: ${formatarData(recibo.data)}
 
-Com isso, dou plena quitacao do valor recebido.
+Declaro que o valor acima foi recebido e dou plena quitacao.
 
-Bailado Carioca`;
+Recebedor:
+${nomeRecebedor}${cnpj ? `\nCNPJ: ${cnpj}` : ""}
+
+${nomeProjeto}`;
 }
 
 /** Formata telefone para WhatsApp (remove caracteres especiais) */
@@ -248,10 +257,14 @@ function gerarLinkWhatsApp(telefone, texto) {
 
 /** Gera e baixa PDF do recibo */
 function gerarPDFRecibo(recibo) {
+  const config = DataStore.state.data.config || {};
   const dataGeracao = new Date().toLocaleString("pt-BR");
   const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "N/A";
   const descricao = recibo.descricaoServico || recibo.competencia || "servico";
   const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "N/A";
+  const nomeRecebedor = config.nomeRecebedor || "Edson Silva";
+  const cnpj = config.cnpj || "";
+  const nomeProjeto = config.nomeProjeto || "Bailado Carioca";
   
   const htmlContent = `
     <!DOCTYPE html>
@@ -291,14 +304,27 @@ function gerarPDFRecibo(recibo) {
           text-align: justify;
         }
         .body p { margin-bottom: 20px; }
+        .recebedor {
+          margin-top: 40px;
+          text-align: center;
+        }
+        .recebedor .nome {
+          font-weight: bold;
+          font-size: 18px;
+        }
+        .recebedor .cnpj {
+          font-size: 14px;
+          color: #666;
+          margin-top: 4px;
+        }
         .assinatura {
-          margin-top: 60px;
+          margin-top: 30px;
           text-align: center;
           font-weight: bold;
           font-size: 18px;
         }
         .footer { 
-          margin-top: 80px; 
+          margin-top: 60px; 
           text-align: center; 
           font-size: 11px; 
           color: #888;
@@ -316,12 +342,17 @@ function gerarPDFRecibo(recibo) {
         <div class="numero">N ${recibo.numero}</div>
       </div>
       <div class="body">
-        <p>Confirmo o recebimento de <strong>${formatarReais(recibo.valor)}</strong> referente a ${descricao}, pago por <strong>${nomeAluno}</strong>.</p>
+        <p>Recebi de <strong>${nomeAluno}</strong> a quantia de <strong>${formatarReais(recibo.valor)}</strong>, referente a ${descricao}.</p>
         <p><strong>Forma de pagamento:</strong> ${formaPgto}</p>
         <p><strong>Data do pagamento:</strong> ${formatarData(recibo.data)}</p>
-        <p>Com isso, dou plena quitacao do valor recebido.</p>
+        <p>Declaro que o valor acima foi recebido e dou plena quitacao.</p>
       </div>
-      <div class="assinatura">Bailado Carioca</div>
+      <div class="recebedor">
+        <div>Recebedor:</div>
+        <div class="nome">${nomeRecebedor}</div>
+        ${cnpj ? `<div class="cnpj">CNPJ: ${cnpj}</div>` : ""}
+      </div>
+      <div class="assinatura">${nomeProjeto}</div>
       <div class="footer">Gerado em ${dataGeracao}</div>
     </body>
     </html>
@@ -407,6 +438,10 @@ const pagesRenderers = {
 
   caixa() {
     renderCaixa();
+  },
+
+  relatorio() {
+    renderRelatorio();
   },
 
   lixeira() {
@@ -732,6 +767,9 @@ function renderCardsTurmas(unidadeFiltro) {
       .map(id => DataStore.findById("professores", id)?.nome)
       .filter(Boolean)
       .join(", ");
+    const alunosVinculados = DataStore.state.data.alunos
+      .filter(a => a.ativo !== false && a.turma === turma.id)
+      .length;
 
     const card = document.createElement("div");
     card.className = "summary-card";
@@ -741,11 +779,12 @@ function renderCardsTurmas(unidadeFiltro) {
         <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: #f0fdf4; color: #16a34a;">Ativa</span>
       </div>
       <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
-        📊 Nível: ${turma.nivel}<br>
+        📊 Nivel: ${turma.nivel}<br>
         🏢 Unidade: ${unidade?.nome || turma.unidade || "-"}<br>
-        🕐 Horário: ${turma.horario || "-"}<br>
+        🕐 Horario: ${turma.horario || "-"}<br>
         👨‍🏫 Professor: ${professor?.nome || "-"}<br>
-        👥 Monitores: ${monitoresNomes || "-"}
+        👥 Monitores: ${monitoresNomes || "-"}<br>
+        🎓 Alunos: ${alunosVinculados}
       </p>
       <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;"></div>
     `;
@@ -1585,12 +1624,45 @@ function abrirModalReciboGerado(recibo) {
 
 /** Renderiza página de recibos */
 function renderRecibos() {
-  const recibos = [...DataStore.state.data.recibos].sort((a, b) => 
+  const header = document.createElement("div");
+  header.style.cssText = "display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;";
+
+  const selectFiltro = document.createElement("select");
+  selectFiltro.id = "filtro-tipo-recibo";
+  selectFiltro.className = "btn-secondary";
+  selectFiltro.style.cssText = "padding: 0.5rem 1rem; min-width: 150px;";
+  selectFiltro.innerHTML = `
+    <option value="">Todos os tipos</option>
+    <option value="mensalidade">Mensalidades</option>
+    <option value="aula_avulsa">Aulas Avulsas</option>
+  `;
+  selectFiltro.onchange = () => renderCardsRecibos(selectFiltro.value);
+  header.appendChild(selectFiltro);
+
+  UI.content.appendChild(header);
+
+  const container = document.createElement("div");
+  container.id = "recibos-container";
+  UI.content.appendChild(container);
+
+  renderCardsRecibos("");
+}
+
+/** Renderiza cards de recibos com filtro */
+function renderCardsRecibos(filtroTipo) {
+  const container = document.getElementById("recibos-container");
+  container.innerHTML = "";
+
+  let recibos = [...DataStore.state.data.recibos].sort((a, b) => 
     new Date(b.data) - new Date(a.data)
   );
 
+  if (filtroTipo) {
+    recibos = recibos.filter(r => r.tipo === filtroTipo);
+  }
+
   if (recibos.length === 0) {
-    UI.content.innerHTML = '<p style="color: #64748b;">Nenhum recibo gerado.</p>';
+    container.innerHTML = '<p style="color: #64748b;">Nenhum recibo encontrado.</p>';
     return;
   }
 
@@ -1648,7 +1720,7 @@ function renderRecibos() {
     grid.appendChild(card);
   });
 
-  UI.content.appendChild(grid);
+  container.appendChild(grid);
 }
 
 /** Exibe recibo em modal */
@@ -1975,6 +2047,260 @@ function abrirModalAulaAvulsa() {
    LIXEIRA
 ========================= */
 
+/* =========================
+   RELATORIO MENSAL
+========================= */
+
+/** Renderiza página de relatório mensal */
+function renderRelatorio() {
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth() + 1;
+  const anoAtual = hoje.getFullYear();
+
+  const header = document.createElement("div");
+  header.style.cssText = "display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;";
+
+  const labelMes = document.createElement("label");
+  labelMes.textContent = "Mes: ";
+  labelMes.style.fontWeight = "500";
+  header.appendChild(labelMes);
+
+  const selectMes = document.createElement("select");
+  selectMes.id = "relatorio-mes";
+  selectMes.className = "btn-secondary";
+  selectMes.style.cssText = "padding: 0.5rem; min-width: 120px;";
+  const meses = ["Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  meses.forEach((m, i) => {
+    const opt = document.createElement("option");
+    opt.value = i + 1;
+    opt.textContent = m;
+    if (i + 1 === mesAtual) opt.selected = true;
+    selectMes.appendChild(opt);
+  });
+  header.appendChild(selectMes);
+
+  const labelAno = document.createElement("label");
+  labelAno.textContent = "Ano: ";
+  labelAno.style.fontWeight = "500";
+  labelAno.style.marginLeft = "1rem";
+  header.appendChild(labelAno);
+
+  const inputAno = document.createElement("input");
+  inputAno.id = "relatorio-ano";
+  inputAno.type = "number";
+  inputAno.value = anoAtual;
+  inputAno.style.cssText = "padding: 0.5rem; width: 80px; border: 1px solid #d1d5db; border-radius: 6px;";
+  header.appendChild(inputAno);
+
+  const btnGerar = document.createElement("button");
+  btnGerar.className = "btn-primary";
+  btnGerar.textContent = "Gerar Relatorio";
+  btnGerar.style.marginLeft = "1rem";
+  btnGerar.onclick = () => gerarRelatorioMensal(parseInt(selectMes.value), parseInt(inputAno.value));
+  header.appendChild(btnGerar);
+
+  UI.content.appendChild(header);
+
+  const container = document.createElement("div");
+  container.id = "relatorio-container";
+  UI.content.appendChild(container);
+
+  gerarRelatorioMensal(mesAtual, anoAtual);
+}
+
+/** Gera relatório mensal */
+function gerarRelatorioMensal(mes, ano) {
+  const container = document.getElementById("relatorio-container");
+  container.innerHTML = "";
+
+  const caixa = DataStore.state.data.caixa;
+  const movimentosMes = caixa.filter(mov => {
+    const data = new Date(mov.data);
+    return data.getMonth() + 1 === mes && data.getFullYear() === ano;
+  });
+
+  const entradas = movimentosMes.filter(m => m.tipo === "entrada");
+  const saidas = movimentosMes.filter(m => m.tipo === "saida");
+  const totalEntradas = entradas.reduce((sum, m) => sum + (m.valor || 0), 0);
+  const totalSaidas = saidas.reduce((sum, m) => sum + (m.valor || 0), 0);
+  const saldo = totalEntradas - totalSaidas;
+
+  const mensalidadesEntradas = entradas.filter(m => m.descricao && m.descricao.toLowerCase().includes("mensalidade"));
+  const aulasAvulsas = entradas.filter(m => m.descricao && m.descricao.toLowerCase().includes("aula avulsa"));
+  const outrasEntradas = entradas.filter(m => !m.descricao || (!m.descricao.toLowerCase().includes("mensalidade") && !m.descricao.toLowerCase().includes("aula avulsa")));
+
+  const meses = ["","Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+  const summaryCards = document.createElement("div");
+  summaryCards.className = "dashboard-cards";
+  summaryCards.innerHTML = `
+    <div class="summary-card" style="border-left: 4px solid #16a34a;">
+      <h4>Total de Entradas</h4>
+      <p style="font-size: 1.5rem; font-weight: bold; color: #16a34a;">${formatarReais(totalEntradas)}</p>
+    </div>
+    <div class="summary-card" style="border-left: 4px solid #dc2626;">
+      <h4>Total de Saidas</h4>
+      <p style="font-size: 1.5rem; font-weight: bold; color: #dc2626;">${formatarReais(totalSaidas)}</p>
+    </div>
+    <div class="summary-card" style="border-left: 4px solid #3b82f6;">
+      <h4>Saldo do Mes</h4>
+      <p style="font-size: 1.5rem; font-weight: bold; color: ${saldo >= 0 ? "#16a34a" : "#dc2626"};">${formatarReais(saldo)}</p>
+    </div>
+  `;
+  container.appendChild(summaryCards);
+
+  const detalhes = document.createElement("div");
+  detalhes.className = "summary-card";
+  detalhes.style.marginTop = "1.5rem";
+
+  let htmlMensalidades = mensalidadesEntradas.length > 0 
+    ? mensalidadesEntradas.map(m => `<li>${m.aluno_nome || "N/A"} - ${formatarReais(m.valor)} (${m.forma_pagamento || "N/A"})</li>`).join("")
+    : "<li>Nenhuma mensalidade registrada</li>";
+
+  let htmlAulas = aulasAvulsas.length > 0
+    ? aulasAvulsas.map(m => `<li>${m.aluno_nome || "N/A"} - ${formatarReais(m.valor)} (${m.forma_pagamento || "N/A"})</li>`).join("")
+    : "<li>Nenhuma aula avulsa registrada</li>";
+
+  let htmlSaidas = saidas.length > 0
+    ? saidas.map(m => `<li>${m.descricao || "Despesa"} - ${formatarReais(m.valor)}</li>`).join("")
+    : "<li>Nenhuma saida registrada</li>";
+
+  detalhes.innerHTML = `
+    <h3 style="margin-bottom: 1rem;">Detalhes - ${meses[mes]} ${ano}</h3>
+    
+    <div style="margin-bottom: 1.5rem;">
+      <h4 style="color: #16a34a; margin-bottom: 0.5rem;">Mensalidades (${mensalidadesEntradas.length})</h4>
+      <ul style="margin-left: 1.5rem; color: #64748b;">${htmlMensalidades}</ul>
+    </div>
+
+    <div style="margin-bottom: 1.5rem;">
+      <h4 style="color: #f59e0b; margin-bottom: 0.5rem;">Aulas Avulsas (${aulasAvulsas.length})</h4>
+      <ul style="margin-left: 1.5rem; color: #64748b;">${htmlAulas}</ul>
+    </div>
+
+    <div style="margin-bottom: 1rem;">
+      <h4 style="color: #dc2626; margin-bottom: 0.5rem;">Saidas (${saidas.length})</h4>
+      <ul style="margin-left: 1.5rem; color: #64748b;">${htmlSaidas}</ul>
+    </div>
+  `;
+  container.appendChild(detalhes);
+
+  const btnPDF = document.createElement("button");
+  btnPDF.className = "btn-primary";
+  btnPDF.textContent = "Exportar PDF";
+  btnPDF.style.marginTop = "1rem";
+  btnPDF.onclick = () => gerarPDFRelatorio(mes, ano, totalEntradas, totalSaidas, saldo, mensalidadesEntradas, aulasAvulsas, saidas);
+  container.appendChild(btnPDF);
+}
+
+/** Gera PDF do relatório mensal */
+function gerarPDFRelatorio(mes, ano, totalEntradas, totalSaidas, saldo, mensalidades, aulas, saidas) {
+  const config = DataStore.state.data.config || {};
+  const nomeProjeto = config.nomeProjeto || "Bailado Carioca";
+  const meses = ["","Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const dataGeracao = new Date().toLocaleString("pt-BR");
+
+  let htmlMensalidades = mensalidades.length > 0 
+    ? mensalidades.map(m => `<tr><td>${m.aluno_nome || "N/A"}</td><td>${formatarReais(m.valor)}</td><td>${m.forma_pagamento || "N/A"}</td></tr>`).join("")
+    : "<tr><td colspan='3'>Nenhuma mensalidade</td></tr>";
+
+  let htmlAulas = aulas.length > 0
+    ? aulas.map(m => `<tr><td>${m.aluno_nome || "N/A"}</td><td>${formatarReais(m.valor)}</td><td>${m.forma_pagamento || "N/A"}</td></tr>`).join("")
+    : "<tr><td colspan='3'>Nenhuma aula avulsa</td></tr>";
+
+  let htmlSaidas = saidas.length > 0
+    ? saidas.map(m => `<tr><td>${m.descricao || "Despesa"}</td><td colspan='2'>${formatarReais(m.valor)}</td></tr>`).join("")
+    : "<tr><td colspan='3'>Nenhuma saida</td></tr>";
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Relatorio ${meses[mes]} ${ano}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+        .header h1 { font-size: 22px; }
+        .header h2 { font-size: 16px; color: #666; margin-top: 5px; }
+        .resumo { display: flex; justify-content: space-around; margin: 30px 0; }
+        .resumo-item { text-align: center; padding: 15px; border: 1px solid #ddd; border-radius: 8px; min-width: 150px; }
+        .resumo-item h3 { font-size: 14px; color: #666; }
+        .resumo-item p { font-size: 20px; font-weight: bold; margin-top: 5px; }
+        .entradas { color: #16a34a; }
+        .saidas { color: #dc2626; }
+        .saldo { color: ${saldo >= 0 ? "#16a34a" : "#dc2626"}; }
+        .secao { margin: 25px 0; }
+        .secao h3 { font-size: 16px; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f8f8; }
+        .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #888; }
+        @media print { body { padding: 20px; } }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>${nomeProjeto}</h1>
+        <h2>Relatorio Mensal - ${meses[mes]} ${ano}</h2>
+      </div>
+      
+      <div class="resumo">
+        <div class="resumo-item">
+          <h3>Total Entradas</h3>
+          <p class="entradas">${formatarReais(totalEntradas)}</p>
+        </div>
+        <div class="resumo-item">
+          <h3>Total Saidas</h3>
+          <p class="saidas">${formatarReais(totalSaidas)}</p>
+        </div>
+        <div class="resumo-item">
+          <h3>Saldo</h3>
+          <p class="saldo">${formatarReais(saldo)}</p>
+        </div>
+      </div>
+
+      <div class="secao">
+        <h3>Mensalidades (${mensalidades.length})</h3>
+        <table>
+          <thead><tr><th>Aluno</th><th>Valor</th><th>Pagamento</th></tr></thead>
+          <tbody>${htmlMensalidades}</tbody>
+        </table>
+      </div>
+
+      <div class="secao">
+        <h3>Aulas Avulsas (${aulas.length})</h3>
+        <table>
+          <thead><tr><th>Aluno</th><th>Valor</th><th>Pagamento</th></tr></thead>
+          <tbody>${htmlAulas}</tbody>
+        </table>
+      </div>
+
+      <div class="secao">
+        <h3>Saidas (${saidas.length})</h3>
+        <table>
+          <thead><tr><th>Descricao</th><th colspan="2">Valor</th></tr></thead>
+          <tbody>${htmlSaidas}</tbody>
+        </table>
+      </div>
+
+      <div class="footer">Gerado em ${dataGeracao}</div>
+    </body>
+    </html>
+  `;
+
+  const printWindow = window.open("", "_blank", "width=800,height=900");
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 300);
+}
+
+/* =========================
+   LIXEIRA
+========================= */
+
 /** Renderiza página da lixeira */
 function renderLixeira() {
   const lixeira = DataStore.state.data.lixeira;
@@ -2059,14 +2385,14 @@ function renderLixeira() {
 
 /** Renderiza página de configurações */
 function renderConfig() {
-  const config = DataStore.state.data.config || { nomeProjeto: "Bailado Carioca", observacoes: "" };
+  const config = DataStore.state.data.config || { nomeProjeto: "Bailado Carioca", cnpj: "", nomeRecebedor: "Edson Silva", observacoes: "" };
 
   const container = document.createElement("div");
   container.className = "summary-card";
   container.style.maxWidth = "600px";
 
   container.innerHTML = `
-    <h3 style="margin-bottom: 1rem;">Configurações do Sistema</h3>
+    <h3 style="margin-bottom: 1rem;">Configuracoes do Sistema</h3>
 
     <div class="field" style="margin-bottom: 1rem;">
       <label>Nome do Projeto</label>
@@ -2074,17 +2400,29 @@ function renderConfig() {
     </div>
 
     <div class="field" style="margin-bottom: 1rem;">
-      <label>Observações Gerais</label>
+      <label>Nome do Recebedor</label>
+      <input id="nomeRecebedor" style="width: 100%; padding: 0.5rem;" placeholder="Nome que aparece no recibo" value="${config.nomeRecebedor || ""}">
+    </div>
+
+    <div class="field" style="margin-bottom: 1rem;">
+      <label>CNPJ</label>
+      <input id="cnpj" style="width: 100%; padding: 0.5rem;" placeholder="00.000.000/0001-00" value="${config.cnpj || ""}">
+    </div>
+
+    <div class="field" style="margin-bottom: 1rem;">
+      <label>Observacoes Gerais</label>
       <textarea id="observacoes" style="width: 100%; padding: 0.5rem; min-height: 100px; border: 1px solid #d1d5db; border-radius: 6px;">${config.observacoes || ""}</textarea>
     </div>
 
-    <button class="btn-primary" id="btnSalvarConfig">Salvar Configurações</button>
+    <button class="btn-primary" id="btnSalvarConfig">Salvar Configuracoes</button>
     <span id="msgSalvo" style="margin-left: 1rem; color: #16a34a; display: none;">Salvo com sucesso!</span>
   `;
 
   container.querySelector("#btnSalvarConfig").onclick = () => {
     DataStore.state.data.config = {
       nomeProjeto: container.querySelector("#nomeProjeto").value,
+      nomeRecebedor: container.querySelector("#nomeRecebedor").value,
+      cnpj: container.querySelector("#cnpj").value,
       observacoes: container.querySelector("#observacoes").value,
     };
     DataStore.save();
