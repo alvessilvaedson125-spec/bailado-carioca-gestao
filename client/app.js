@@ -1933,11 +1933,16 @@ function renderCaixa() {
     <select id="filtroAno" data-testid="select-filter-year" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px;">
       <option value="0">Todos os anos</option>
     </select>
+    <label style="margin-left: 1rem; display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+      <input type="checkbox" id="mostrarCancelados" data-testid="checkbox-show-cancelled" style="cursor: pointer;">
+      <span style="font-size: 0.9rem; color: #6b7280;">Mostrar cancelados</span>
+    </label>
   `;
   UI.content.appendChild(filtroContainer);
 
   const selectMes = filtroContainer.querySelector("#filtroMes");
   const selectAno = filtroContainer.querySelector("#filtroAno");
+  const checkMostrarCancelados = filtroContainer.querySelector("#mostrarCancelados");
 
   // Popular anos (do ano atual até 5 anos atrás)
   for (let ano = anoAtual; ano >= anoAtual - 5; ano--) {
@@ -1965,6 +1970,7 @@ function renderCaixa() {
   function atualizarCaixa() {
     mesSelecionado = parseInt(selectMes.value);
     anoSelecionado = parseInt(selectAno.value);
+    const mostrarCancelados = checkMostrarCancelados.checked;
 
     // Filtrar lançamentos pelo período
     let lancamentosFiltrados = [...DataStore.state.data.caixa];
@@ -1982,12 +1988,19 @@ function renderCaixa() {
       });
     }
 
-    // Calcular totais do período
-    const totalEntradas = lancamentosFiltrados
+    // Filtrar por status (se não mostrar cancelados)
+    if (!mostrarCancelados) {
+      lancamentosFiltrados = lancamentosFiltrados.filter(lanc => lanc.status !== "cancelado");
+    }
+
+    // Calcular totais do período (APENAS lançamentos ativos)
+    const lancamentosAtivos = lancamentosFiltrados.filter(l => l.status !== "cancelado");
+    
+    const totalEntradas = lancamentosAtivos
       .filter(l => l.tipo === "entrada")
       .reduce((sum, l) => sum + (l.valor || 0), 0);
 
-    const totalSaidas = lancamentosFiltrados
+    const totalSaidas = lancamentosAtivos
       .filter(l => l.tipo === "saida")
       .reduce((sum, l) => sum + (l.valor || 0), 0);
 
@@ -2044,15 +2057,24 @@ function renderCaixa() {
 
     lancamentosOrdenados.forEach(lanc => {
       const isEntrada = lanc.tipo === "entrada";
+      const isCancelado = lanc.status === "cancelado";
 
       const card = document.createElement("div");
       card.className = "summary-card";
+      if (isCancelado) {
+        card.style.opacity = "0.6";
+        card.style.background = "#fef2f2";
+      }
+      
       card.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 0.5rem;">
           <strong>${lanc.descricao || (isEntrada ? "Entrada" : "Saída")}</strong>
-          <span style="color: ${isEntrada ? "#16a34a" : "#dc2626"}; font-weight: 600;">
-            ${isEntrada ? "+" : "-"}${formatarReais(lanc.valor)}
-          </span>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            ${isCancelado ? `<span style="background: #dc2626; color: white; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 600;">CANCELADO</span>` : ""}
+            <span style="color: ${isCancelado ? "#9ca3af" : (isEntrada ? "#16a34a" : "#dc2626")}; font-weight: 600; ${isCancelado ? "text-decoration: line-through;" : ""}">
+              ${isEntrada ? "+" : "-"}${formatarReais(lanc.valor)}
+            </span>
+          </div>
         </div>
         <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
           Data: ${formatarData(lanc.data)}<br>
@@ -2060,16 +2082,35 @@ function renderCaixa() {
           Pagamento: ${lanc.forma_pagamento || "-"}
           ${lanc.telefone ? `<br>Tel: ${lanc.telefone}` : ""}
           ${lanc.editadoEm ? `<br><em style="font-size: 0.8rem;">Editado em: ${new Date(lanc.editadoEm).toLocaleDateString("pt-BR")}</em>` : ""}
+          ${isCancelado && lanc.dataCancelamento ? `<br><em style="font-size: 0.8rem; color: #dc2626;">Cancelado em: ${new Date(lanc.dataCancelamento).toLocaleDateString("pt-BR")}</em>` : ""}
+          ${isCancelado && lanc.motivoCancelamento ? `<br><em style="font-size: 0.8rem; color: #dc2626;">Motivo: ${lanc.motivoCancelamento}</em>` : ""}
         </p>
-        <div style="margin-top: 0.5rem;"></div>
+        <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;"></div>
       `;
 
       const acoes = card.querySelector("div:last-child");
+      
       const btnEditar = document.createElement("button");
       btnEditar.className = "btn-secondary";
       btnEditar.textContent = "Editar";
-      btnEditar.onclick = () => abrirModalEditarLancamento(lanc, atualizarCaixa);
+      if (isCancelado) {
+        btnEditar.disabled = true;
+        btnEditar.style.opacity = "0.5";
+        btnEditar.style.cursor = "not-allowed";
+      } else {
+        btnEditar.onclick = () => abrirModalEditarLancamento(lanc, atualizarCaixa);
+      }
       acoes.appendChild(btnEditar);
+
+      if (!isCancelado) {
+        const btnCancelar = document.createElement("button");
+        btnCancelar.className = "btn-secondary";
+        btnCancelar.style.background = "#fef2f2";
+        btnCancelar.style.color = "#dc2626";
+        btnCancelar.textContent = "Cancelar";
+        btnCancelar.onclick = () => abrirModalCancelarLancamento(lanc, atualizarCaixa);
+        acoes.appendChild(btnCancelar);
+      }
 
       grid.appendChild(card);
     });
@@ -2080,6 +2121,7 @@ function renderCaixa() {
   // Event listeners para os filtros
   selectMes.onchange = atualizarCaixa;
   selectAno.onchange = atualizarCaixa;
+  checkMostrarCancelados.onchange = atualizarCaixa;
 
   // Renderizar inicial
   atualizarCaixa();
@@ -2241,6 +2283,64 @@ function abrirModalEditarLancamento(lancamento, callback) {
     lancamento.data = modal.querySelector("#data").value || lancamento.data;
     lancamento.forma_pagamento = modal.querySelector("#forma").value;
     lancamento.editadoEm = new Date().toISOString();
+
+    DataStore.save();
+    overlay.remove();
+    
+    // Chamar callback para atualizar a visualização
+    if (callback) {
+      callback();
+    }
+  };
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+/** Modal para cancelar lançamento do caixa */
+function abrirModalCancelarLancamento(lancamento, callback) {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+
+  const isEntrada = lancamento.tipo === "entrada";
+
+  modal.innerHTML = `
+    <h2 class="modal-title" style="color: #dc2626;">Cancelar ${isEntrada ? "Entrada" : "Saída"}</h2>
+
+    <p style="margin-bottom: 1rem;">
+      Você está cancelando o lançamento:<br>
+      <strong>${lancamento.descricao || (isEntrada ? "Entrada" : "Saída")}</strong> - ${formatarReais(lancamento.valor)}
+    </p>
+
+    <div class="modal-grid">
+      <div class="field">
+        <label>Motivo do cancelamento (opcional)</label>
+        <textarea id="motivo" rows="3" placeholder="Ex: Lançamento duplicado, valor incorreto..." style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical;"></textarea>
+      </div>
+    </div>
+
+    <p style="margin-top: 1rem; color: #dc2626; font-size: 0.85rem;">
+      <strong>Atenção:</strong> Lançamentos cancelados não entram no cálculo de saldo e não aparecem em relatórios.
+    </p>
+
+    <div class="modal-actions">
+      <button class="modal-btn-secondary">Voltar</button>
+      <button class="modal-btn-primary" style="background: #dc2626;">Confirmar Cancelamento</button>
+    </div>
+  `;
+
+  modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
+
+  modal.querySelector(".modal-btn-primary").onclick = () => {
+    const motivo = modal.querySelector("#motivo").value.trim();
+
+    // Atualizar o lançamento
+    lancamento.status = "cancelado";
+    lancamento.dataCancelamento = new Date().toISOString();
+    if (motivo) {
+      lancamento.motivoCancelamento = motivo;
+    }
 
     DataStore.save();
     overlay.remove();
