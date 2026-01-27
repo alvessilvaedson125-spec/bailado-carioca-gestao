@@ -2059,8 +2059,18 @@ function renderCaixa() {
           ${lanc.aluno_nome ? `Aluno: ${lanc.aluno_nome}<br>` : ""}
           Pagamento: ${lanc.forma_pagamento || "-"}
           ${lanc.telefone ? `<br>Tel: ${lanc.telefone}` : ""}
+          ${lanc.editadoEm ? `<br><em style="font-size: 0.8rem;">Editado em: ${new Date(lanc.editadoEm).toLocaleDateString("pt-BR")}</em>` : ""}
         </p>
+        <div style="margin-top: 0.5rem;"></div>
       `;
+
+      const acoes = card.querySelector("div:last-child");
+      const btnEditar = document.createElement("button");
+      btnEditar.className = "btn-secondary";
+      btnEditar.textContent = "Editar";
+      btnEditar.onclick = () => abrirModalEditarLancamento(lanc, atualizarCaixa);
+      acoes.appendChild(btnEditar);
+
       grid.appendChild(card);
     });
 
@@ -2146,6 +2156,99 @@ function abrirModalCaixa(tipo) {
     DataStore.save();
     overlay.remove();
     UI.navigate("caixa");
+  };
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+/** Modal para editar lançamento do caixa */
+function abrirModalEditarLancamento(lancamento, callback) {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+
+  const isEntrada = lancamento.tipo === "entrada";
+  const dataFormatada = lancamento.data 
+    ? (lancamento.data.includes("T") ? lancamento.data.split("T")[0] : lancamento.data)
+    : new Date().toISOString().split("T")[0];
+
+  modal.innerHTML = `
+    <h2 class="modal-title">Editar ${isEntrada ? "Entrada" : "Saída"}</h2>
+
+    <div class="modal-grid">
+      <div class="field">
+        <label>Descrição *</label>
+        <input id="descricao" placeholder="Descrição do lançamento" value="${lancamento.descricao || ""}">
+      </div>
+
+      <div class="field">
+        <label>Valor (R$) *</label>
+        <input id="valor" type="number" placeholder="0.00" value="${lancamento.valor || ""}">
+      </div>
+
+      <div class="field">
+        <label>Data</label>
+        <input id="data" type="date" value="${dataFormatada}">
+      </div>
+
+      <div class="field">
+        <label>Forma de Pagamento</label>
+        <select id="forma">
+          <option value="Pix" ${lancamento.forma_pagamento === "Pix" ? "selected" : ""}>Pix</option>
+          <option value="Dinheiro" ${lancamento.forma_pagamento === "Dinheiro" ? "selected" : ""}>Dinheiro</option>
+          <option value="Cartão" ${lancamento.forma_pagamento === "Cartão" ? "selected" : ""}>Cartão</option>
+          <option value="Transferência" ${lancamento.forma_pagamento === "Transferência" ? "selected" : ""}>Transferência</option>
+        </select>
+      </div>
+
+      ${lancamento.aluno_nome ? `
+      <div class="field">
+        <label>Aluno</label>
+        <input readonly style="background: #f1f5f9;" value="${lancamento.aluno_nome}">
+      </div>
+      ` : ""}
+    </div>
+
+    <p style="margin-top: 1rem; color: #6b7280; font-size: 0.85rem;">
+      <em>Nota: A edição não altera recibos já emitidos.</em>
+    </p>
+
+    <div class="modal-actions">
+      <button class="modal-btn-secondary">Cancelar</button>
+      <button class="modal-btn-primary">Salvar Alterações</button>
+    </div>
+  `;
+
+  modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
+
+  modal.querySelector(".modal-btn-primary").onclick = () => {
+    const descricao = modal.querySelector("#descricao").value;
+    const valor = Number(modal.querySelector("#valor").value);
+
+    if (!descricao) {
+      alert("Descrição é obrigatória!");
+      return;
+    }
+    if (!valor) {
+      alert("Valor é obrigatório!");
+      return;
+    }
+
+    // Atualizar o lançamento
+    lancamento.descricao = descricao;
+    lancamento.valor = valor;
+    lancamento.data = modal.querySelector("#data").value || lancamento.data;
+    lancamento.forma_pagamento = modal.querySelector("#forma").value;
+    lancamento.editadoEm = new Date().toISOString();
+
+    DataStore.save();
+    overlay.remove();
+    
+    // Chamar callback para atualizar a visualização
+    if (callback) {
+      callback();
+    }
   };
 
   overlay.appendChild(modal);
