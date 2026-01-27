@@ -1,0 +1,261 @@
+Você é um engenheiro de software sênior responsável por finalizar um sistema de gestão em JavaScript puro (Vanilla JS) chamado Bailado Carioca.
+
+O projeto usa:
+
+HTML + CSS já existentes
+
+app.js único
+
+LocalStorage como banco de dados
+
+Arquitetura simples, clara e sem dependências
+
+⚠️ NÃO QUEBRE O PREVIEW
+⚠️ NÃO REMOVA FUNÇÕES EXISTENTES
+⚠️ NÃO CRIE FUNÇÕES NÃO USADAS
+⚠️ NÃO DEIXE FUNÇÕES INCOMPLETAS
+
+O código DEVE RODAR SEM ERROS.
+
+🎯 OBJETIVO GERAL
+
+Finalizar 100% do app.js, deixando TODAS AS ABAS FUNCIONAIS, com:
+
+Cadastro
+
+Edição
+
+Exclusão (soft delete)
+
+Filtros básicos
+
+Relações entre entidades
+
+Registro financeiro consistente
+
+Interface limpa em cards, não tabelas
+
+📁 ESTRUTURA DE DADOS (OBRIGATÓRIA)
+
+Usar LocalStorage com este modelo (expandir se necessário):
+
+{
+  alunos: [],
+  turmas: [],
+  unidades: [],
+  professores: [],
+  mensalidades: [],
+  caixa: [],
+  lixeira: []
+}
+
+🧩 FUNCIONALIDADES OBRIGATÓRIAS (POR ABA)
+🏠 Dashboard
+
+Cards com:
+
+Total de alunos ativos
+
+Turmas ativas
+
+Unidades
+
+Professores
+
+Mensalidades em aberto
+
+Nenhuma função externa inexistente
+
+👤 Alunos
+
+Visualização em cards
+
+Mostrar:
+
+Nome
+
+Telefone
+
+Turma + nível
+
+Unidade
+
+Valor da mensalidade
+
+Tipo de matrícula
+
+Cadastro:
+
+Nome
+
+Telefone
+
+Turma (select)
+
+Tipo (normal / casal / múltiplas)
+
+Valor mensal
+
+Exclusão → vai para lixeira
+
+Edição funcional
+
+🕺 Turmas
+
+Cadastro completo:
+
+Nome
+
+Nível
+
+Unidade
+
+Horário
+
+Professor responsável
+
+Monitores
+
+Descrição
+
+Ativa / Inativa
+
+Cards organizados
+
+Filtro por unidade
+
+Exclusão lógica
+
+🏢 Unidades
+
+Botão “Nova Unidade”
+
+Cadastro:
+
+Nome
+
+Endereço (opcional)
+
+Usada como referência em turmas
+
+Exclusão lógica
+
+👨‍🏫 Professores
+
+Cadastro:
+
+Nome
+
+Função (Professor / Monitor)
+
+Telefone
+
+Vínculo com turmas
+
+Card simples
+
+Exclusão lógica
+
+💳 Mensalidades
+
+Totalmente funcional
+
+Registro:
+
+Aluno
+
+Competência (mês/ano)
+
+Valor
+
+Status (paga / pendente)
+
+Forma de pagamento
+
+Botão “Registrar pagamento”
+
+Ao pagar:
+
+Lançar automaticamente no Caixa
+
+💰 Caixa (Financeiro)
+
+Registros:
+
+Data
+
+Tipo (mensalidade / aula avulsa)
+
+Aluno (se houver)
+
+Valor
+
+Forma de pagamento
+
+Mostrar:
+
+Total entradas
+
+Lista de lançamentos
+
+Aula avulsa:
+
+Nome do aluno
+
+Telefone
+
+Data
+
+Valor
+
+🗑️ Lixeira
+
+Mostrar tudo que foi excluído
+
+Opções:
+
+Restaurar
+
+Excluir definitivamente
+
+⚙️ Configurações
+
+Campo editável:
+
+Nome do projeto
+
+Observações gerais
+
+Salvar no LocalStorage
+
+Nenhuma tela vazia
+
+🧱 REGRAS TÉCNICAS IMPORTANTES
+
+Um único arquivo app.js
+
+Funções claramente separadas
+
+Nenhuma função chamada sem existir
+
+Nenhum renderX ausente
+
+Nenhum erro de escopo
+
+Código legível e comentado
+
+Preview deve abrir sem erro
+
+🧪 ENTREGA FINAL
+
+Ao finalizar:
+
+Revisar se todas as abas renderizam
+
+Conferir se nenhuma função está faltando
+
+Garantir que LocalStorage persiste corretamente
+
+Não deixar TODO / placeholder
+
+🎯 Execute tudo acima e entregue o app.js FINAL, COMPLETO E FUNCIONAL.
