@@ -1239,6 +1239,40 @@ function isBolsista(aluno) {
   return aluno?.bolsa?.ativa === true;
 }
 
+/** Obtem array de turmas_ids do aluno (migrando turma unica se necessario) */
+function getTurmasIds(aluno) {
+  if (!aluno) return [];
+  // Se ja tem array turmas_ids, retorna ele
+  if (Array.isArray(aluno.turmas_ids)) {
+    return aluno.turmas_ids;
+  }
+  // Migrar turma unica para array
+  if (aluno.turma) {
+    return [aluno.turma];
+  }
+  return [];
+}
+
+/** Define turmas_ids e mantem compatibilidade com turma unica */
+function setTurmasIds(aluno, turmasIds) {
+  aluno.turmas_ids = turmasIds || [];
+  // Manter turma como primeira para compatibilidade
+  aluno.turma = turmasIds.length > 0 ? turmasIds[0] : null;
+}
+
+/** Verifica se aluno pertence a uma turma (usando turmas_ids ou turma) */
+function alunoEmTurma(aluno, turmaId) {
+  if (!aluno || !turmaId) return false;
+  const turmasIds = getTurmasIds(aluno);
+  return turmasIds.includes(turmaId);
+}
+
+/** Formata nome da turma com nivel */
+function formatarTurmaNivel(turma) {
+  if (!turma) return "Sem turma";
+  return `${turma.nome} - ${turma.nivel || "Sem nivel"}`;
+}
+
 /** Renderiza pagina de Bolsistas */
 function renderBolsistas() {
   const turmas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
@@ -1348,7 +1382,7 @@ function renderBolsistas() {
   selectTurma.style.cssText = "padding: 0.5rem; min-width: 180px;";
   selectTurma.innerHTML = '<option value="">Todas as Turmas</option>';
   turmas.forEach(t => {
-    selectTurma.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
+    selectTurma.innerHTML += `<option value="${t.id}">${t.nome} - ${t.nivel || "Sem nivel"}</option>`;
   });
   header.appendChild(selectTurma);
   
@@ -1459,7 +1493,7 @@ function renderCardsBolsistas() {
   
   // Aplicar filtros
   if (filtroTurma) {
-    bolsistas = bolsistas.filter(a => a.turma === filtroTurma);
+    bolsistas = bolsistas.filter(a => alunoEmTurma(a, filtroTurma));
   }
   if (filtroStatus) {
     bolsistas = bolsistas.filter(a => a.status === filtroStatus);
@@ -1505,10 +1539,22 @@ function renderCardsBolsistas() {
   const grid = criarGridCards();
   
   bolsistas.forEach(aluno => {
-    const turma = DataStore.findById("turmas", aluno.turma);
+    const turmasIds = getTurmasIds(aluno);
     const tipoBolsa = aluno.bolsa?.tipo || "integral";
     const statusClass = aluno.status === "ativo" ? "badge-success" : "badge-warning";
     const statusLabel = aluno.status === "ativo" ? "Ativo" : "Trancado";
+    
+    // Renderizar turmas como chips
+    let turmasHtml = "";
+    if (turmasIds.length === 0) {
+      turmasHtml = '<span style="color: var(--color-text-secondary); font-style: italic;">Nenhuma turma vinculada</span>';
+    } else {
+      turmasHtml = turmasIds.map(tid => {
+        const t = DataStore.findById("turmas", tid);
+        if (!t) return "";
+        return `<span class="badge badge-muted" style="margin-right: 0.25rem;">${t.nome} - ${t.nivel || "Sem nivel"}</span>`;
+      }).join("");
+    }
     
     const card = document.createElement("div");
     card.className = "summary-card";
@@ -1524,7 +1570,10 @@ function renderCardsBolsistas() {
         </div>
       </div>
       <div class="card-body" style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 0.75rem;">
-        <p style="margin: 0.25rem 0;">Turma: ${turma?.nome || "Sem turma"}</p>
+        <div style="margin: 0.25rem 0;">
+          <span style="font-weight: 500;">Turmas:</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem;">${turmasHtml}</div>
+        </div>
         ${aluno.bolsa?.observacao ? `<p style="margin: 0.25rem 0; font-style: italic;">"${aluno.bolsa.observacao}"</p>` : ""}
       </div>
       <div class="card-footer" style="display: flex; gap: 0.5rem; flex-wrap: wrap;"></div>
@@ -1602,12 +1651,16 @@ function abrirModalNovoBolsista() {
         <input id="novo-bolsista-telefone" data-testid="input-new-bolsista-telefone" placeholder="(00) 00000-0000">
       </div>
       
-      <div class="field">
-        <label>Turma</label>
-        <select id="novo-bolsista-turma" data-testid="select-new-bolsista-turma">
-          <option value="">Sem turma (atribuir depois)</option>
-          ${turmas.map(t => `<option value="${t.id}">${t.nome}</option>`).join("")}
-        </select>
+      <div class="field full-width">
+        <label>Turmas (pode adicionar varias)</label>
+        <div id="novo-bolsista-turmas-chips" data-testid="container-new-bolsista-turmas" style="display: flex; flex-wrap: wrap; gap: 0.5rem; min-height: 40px; padding: 0.75rem; background: var(--bg-card, #fff); border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 0.5rem;"></div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <select id="novo-bolsista-add-turma" data-testid="select-new-bolsista-turma" style="flex: 1; padding: 0.5rem;">
+            <option value="">Selecionar turma...</option>
+            ${turmas.map(t => `<option value="${t.id}">${t.nome} - ${t.nivel || "Sem nivel"}</option>`).join("")}
+          </select>
+          <button type="button" id="btn-add-turma-novo" data-testid="button-add-turma-new" class="btn-secondary" style="white-space: nowrap;">Adicionar</button>
+        </div>
       </div>
       
       <div class="field">
@@ -1631,12 +1684,67 @@ function abrirModalNovoBolsista() {
     </div>
   `;
   
+  // Estado local para turmas selecionadas
+  let turmasSelecionadas = [];
+  
+  function renderTurmasChipsNovo() {
+    const container = modal.querySelector("#novo-bolsista-turmas-chips");
+    container.innerHTML = "";
+    
+    if (turmasSelecionadas.length === 0) {
+      container.innerHTML = '<span style="color: var(--color-text-secondary); font-style: italic;">Nenhuma turma selecionada</span>';
+      return;
+    }
+    
+    turmasSelecionadas.forEach(tid => {
+      const t = DataStore.findById("turmas", tid);
+      if (!t) return;
+      
+      const chip = document.createElement("span");
+      chip.style.cssText = "display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.75rem; background: #e0f2fe; color: #0369a1; border-radius: 4px; font-size: 0.85rem;";
+      chip.innerHTML = `
+        <span>${t.nome} - ${t.nivel || "Sem nivel"}</span>
+        <button type="button" style="background: none; border: none; cursor: pointer; color: #0369a1; font-weight: bold; padding: 0 2px; font-size: 1rem;" title="Remover">X</button>
+      `;
+      chip.querySelector("button").onclick = () => {
+        turmasSelecionadas = turmasSelecionadas.filter(id => id !== tid);
+        renderTurmasChipsNovo();
+        atualizarSelectTurmasNovo();
+      };
+      container.appendChild(chip);
+    });
+  }
+  
+  function atualizarSelectTurmasNovo() {
+    const select = modal.querySelector("#novo-bolsista-add-turma");
+    const disponiveis = turmas.filter(t => !turmasSelecionadas.includes(t.id));
+    select.innerHTML = '<option value="">Selecionar turma...</option>';
+    disponiveis.forEach(t => {
+      select.innerHTML += `<option value="${t.id}">${t.nome} - ${t.nivel || "Sem nivel"}</option>`;
+    });
+  }
+  
+  // Inicializar
+  renderTurmasChipsNovo();
+  
+  // Adicionar turma
+  modal.querySelector("#btn-add-turma-novo").onclick = () => {
+    const select = modal.querySelector("#novo-bolsista-add-turma");
+    const tid = select.value;
+    if (!tid) {
+      alert("Selecione uma turma!");
+      return;
+    }
+    turmasSelecionadas.push(tid);
+    renderTurmasChipsNovo();
+    atualizarSelectTurmasNovo();
+  };
+  
   modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
   
   modal.querySelector(".modal-btn-primary").onclick = () => {
     const nome = modal.querySelector("#novo-bolsista-nome").value.trim();
     const telefone = modal.querySelector("#novo-bolsista-telefone").value.trim();
-    const turmaId = modal.querySelector("#novo-bolsista-turma").value;
     const tipo = modal.querySelector("#novo-bolsista-tipo").value;
     const obs = modal.querySelector("#novo-bolsista-obs").value.trim();
     
@@ -1645,14 +1753,15 @@ function abrirModalNovoBolsista() {
       return;
     }
     
-    // Criar aluno automaticamente
+    // Criar aluno automaticamente com multi-turma
     const novoAluno = {
       id: crypto.randomUUID(),
       nome: nome,
       telefone: telefone || "",
       email: "",
       cpf: "",
-      turma: turmaId || null,
+      turma: turmasSelecionadas.length > 0 ? turmasSelecionadas[0] : null,
+      turmas_ids: turmasSelecionadas,
       unidade: null,
       tipoMatricula: "bolsista",
       mensalidade: 0,
@@ -1673,6 +1782,14 @@ function abrirModalNovoBolsista() {
     // Adicionar eventos ao historico
     adicionarEventoAluno(novoAluno.id, "Aluno cadastrado como bolsista");
     adicionarEventoAluno(novoAluno.id, `Bolsa concedida - Tipo: ${formatarTipoBolsa(tipo)}`);
+    
+    // Registrar turmas vinculadas
+    turmasSelecionadas.forEach(tid => {
+      const t = DataStore.findById("turmas", tid);
+      if (t) {
+        adicionarEventoAluno(novoAluno.id, `Bolsista vinculado a turma ${t.nome} - ${t.nivel || "Sem nivel"}`);
+      }
+    });
     
     overlay.remove();
     
@@ -1786,13 +1903,16 @@ function abrirModalEditarBolsa(aluno) {
   const modal = document.createElement("div");
   modal.className = "modal-card";
   
+  const todasTurmas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
+  let turmasVinculadas = [...getTurmasIds(aluno)]; // Copia para manipulacao
+  
   modal.innerHTML = `
     <h2 class="modal-title">Editar Bolsa - ${aluno.nome}</h2>
     
     <div class="modal-grid">
       <div class="field">
         <label>Tipo de Bolsa *</label>
-        <select id="bolsa-tipo">
+        <select id="bolsa-tipo" data-testid="select-bolsa-tipo">
           <option value="integral" ${aluno.bolsa?.tipo === "integral" ? "selected" : ""}>Integral (100%)</option>
           <option value="parcial" ${aluno.bolsa?.tipo === "parcial" ? "selected" : ""}>Parcial</option>
           <option value="apoio" ${aluno.bolsa?.tipo === "apoio" ? "selected" : ""}>Apoio</option>
@@ -1800,16 +1920,99 @@ function abrirModalEditarBolsa(aluno) {
       </div>
       
       <div class="field full-width">
+        <label>Turmas Vinculadas</label>
+        <div id="turmas-chips-container" data-testid="container-turmas-vinculadas" style="display: flex; flex-wrap: wrap; gap: 0.5rem; min-height: 40px; padding: 0.75rem; background: var(--bg-card, #fff); border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 0.5rem;"></div>
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <select id="adicionar-turma" data-testid="select-add-turma" style="flex: 1; padding: 0.5rem; min-width: 200px;">
+            <option value="">Selecionar turma para adicionar...</option>
+          </select>
+          <button type="button" id="btn-add-turma" data-testid="button-add-turma" class="btn-primary" style="white-space: nowrap;">Adicionar</button>
+          <button type="button" id="btn-limpar-turmas" data-testid="button-clear-turmas" class="btn-secondary" style="white-space: nowrap; color: #dc2626;">Limpar Todas</button>
+        </div>
+      </div>
+      
+      <div class="field full-width">
         <label>Observacao</label>
-        <textarea id="bolsa-obs" rows="3">${aluno.bolsa?.observacao || ""}</textarea>
+        <textarea id="bolsa-obs" data-testid="input-bolsa-obs" rows="3">${aluno.bolsa?.observacao || ""}</textarea>
       </div>
     </div>
     
     <div class="modal-actions">
-      <button class="modal-btn-secondary">Cancelar</button>
-      <button class="modal-btn-primary">Salvar</button>
+      <button class="modal-btn-secondary" data-testid="button-cancel-bolsa">Cancelar</button>
+      <button class="modal-btn-primary" data-testid="button-save-bolsa">Salvar</button>
     </div>
   `;
+  
+  // Funcao para atualizar dropdown de turmas disponiveis
+  function atualizarDropdownTurmas() {
+    const select = modal.querySelector("#adicionar-turma");
+    const turmasDisponiveis = todasTurmas.filter(t => !turmasVinculadas.includes(t.id));
+    select.innerHTML = '<option value="">Selecionar turma para adicionar...</option>';
+    turmasDisponiveis.forEach(t => {
+      select.innerHTML += `<option value="${t.id}">${t.nome} - ${t.nivel || "Sem nivel"}</option>`;
+    });
+  }
+  
+  // Funcao para renderizar chips de turmas
+  function renderTurmasChips() {
+    const container = modal.querySelector("#turmas-chips-container");
+    container.innerHTML = "";
+    
+    if (turmasVinculadas.length === 0) {
+      container.innerHTML = '<span style="color: var(--color-text-secondary); font-style: italic;">Nenhuma turma vinculada</span>';
+      return;
+    }
+    
+    turmasVinculadas.forEach(tid => {
+      const turma = DataStore.findById("turmas", tid);
+      if (!turma) return;
+      
+      const chip = document.createElement("span");
+      chip.style.cssText = "display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.75rem; background: #e0f2fe; color: #0369a1; border-radius: 4px; font-size: 0.85rem;";
+      chip.setAttribute("data-testid", `chip-turma-${tid}`);
+      chip.innerHTML = `
+        <span>${turma.nome} - ${turma.nivel || "Sem nivel"}</span>
+        <button type="button" data-id="${tid}" data-testid="button-remove-turma-${tid}" style="background: none; border: none; cursor: pointer; color: #0369a1; font-weight: bold; padding: 0 2px; font-size: 1rem;" title="Remover turma">X</button>
+      `;
+      
+      chip.querySelector("button").onclick = () => {
+        turmasVinculadas = turmasVinculadas.filter(id => id !== tid);
+        renderTurmasChips();
+        atualizarDropdownTurmas();
+      };
+      
+      container.appendChild(chip);
+    });
+  }
+  
+  // Inicializar
+  atualizarDropdownTurmas();
+  renderTurmasChips();
+  
+  // Adicionar turma
+  modal.querySelector("#btn-add-turma").onclick = () => {
+    const select = modal.querySelector("#adicionar-turma");
+    const turmaId = select.value;
+    if (!turmaId) {
+      alert("Selecione uma turma!");
+      return;
+    }
+    turmasVinculadas.push(turmaId);
+    renderTurmasChips();
+    atualizarDropdownTurmas();
+  };
+  
+  // Limpar todas as turmas
+  modal.querySelector("#btn-limpar-turmas").onclick = () => {
+    if (turmasVinculadas.length === 0) {
+      alert("Nao ha turmas para remover.");
+      return;
+    }
+    if (!confirm("Remover TODAS as turmas vinculadas?")) return;
+    turmasVinculadas = [];
+    renderTurmasChips();
+    atualizarDropdownTurmas();
+  };
   
   modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
   
@@ -1818,7 +2021,9 @@ function abrirModalEditarBolsa(aluno) {
     const obs = modal.querySelector("#bolsa-obs").value.trim();
     
     const tipoAnterior = aluno.bolsa?.tipo;
+    const turmasAnteriores = getTurmasIds(aluno);
     
+    // Atualizar bolsa
     aluno.bolsa = {
       ...aluno.bolsa,
       tipo: tipo,
@@ -1826,16 +2031,36 @@ function abrirModalEditarBolsa(aluno) {
       atualizadaEm: new Date().toISOString()
     };
     
+    // Atualizar turmas
+    setTurmasIds(aluno, turmasVinculadas);
+    
     DataStore.save();
     
-    // Adicionar evento ao historico se tipo mudou
+    // Registrar historico para mudanca de tipo
     if (tipoAnterior !== tipo) {
       adicionarEventoAluno(aluno.id, `Bolsa atualizada - Tipo: ${formatarTipoBolsa(tipoAnterior)} -> ${formatarTipoBolsa(tipo)}`);
-    } else {
-      adicionarEventoAluno(aluno.id, "Bolsa atualizada");
     }
     
+    // Registrar historico para turmas adicionadas
+    const turmasAdicionadas = turmasVinculadas.filter(t => !turmasAnteriores.includes(t));
+    turmasAdicionadas.forEach(tid => {
+      const turma = DataStore.findById("turmas", tid);
+      if (turma) {
+        adicionarEventoAluno(aluno.id, `Bolsista vinculado a turma ${turma.nome} - ${turma.nivel || "Sem nivel"}`);
+      }
+    });
+    
+    // Registrar historico para turmas removidas
+    const turmasRemovidas = turmasAnteriores.filter(t => !turmasVinculadas.includes(t));
+    turmasRemovidas.forEach(tid => {
+      const turma = DataStore.findById("turmas", tid);
+      if (turma) {
+        adicionarEventoAluno(aluno.id, `Bolsista removido da turma ${turma.nome} - ${turma.nivel || "Sem nivel"}`);
+      }
+    });
+    
     overlay.remove();
+    renderBolsistasChips();
     renderCardsBolsistas();
     alert("Bolsa atualizada com sucesso!");
   };
@@ -4253,9 +4478,9 @@ function renderAlunosPresenca(container, turmaId, data) {
   const turma = DataStore.findById("turmas", turmaId);
   if (!turma) return;
   
-  // Buscar alunos ativos da turma
+  // Buscar alunos ativos da turma (incluindo bolsistas com multi-turma)
   const alunos = DataStore.state.data.alunos.filter(a => 
-    a.status === "ativo" && a.turma === turmaId
+    a.status === "ativo" && alunoEmTurma(a, turmaId)
   );
   
   if (alunos.length === 0) {
