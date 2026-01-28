@@ -1,0 +1,240 @@
+ocê está trabalhando no Bailado Carioca — Sistema de Gestão, um app estável, funcional e em produção, feito em JavaScript puro, com localStorage, cards, soft delete, controle financeiro real e foco em uso diário.
+
+⚠️ Regras obrigatórias
+
+❌ Não reescrever o app do zero
+
+❌ Não quebrar funcionalidades existentes
+
+❌ Não apagar dados já salvos
+
+❌ Não introduzir erros no console
+
+✅ Tudo deve ser incremental e compatível
+
+🎯 OBJETIVO DESTA FASE
+
+Adicionar camadas avançadas de gestão, visualização e controle, mantendo o sistema simples, leve e não contábil, mas profissional.
+
+🔹 1️⃣ Gráficos no Dashboard (Evolução Financeira)
+
+Implementar gráficos simples e claros no Dashboard:
+
+Requisitos
+
+Gráfico de Entradas x Saídas por mês
+
+Gráfico de Saldo mensal
+
+Dados baseados no Caixa
+
+Considerar apenas lançamentos ativos (não cancelados)
+
+Visual
+
+Gráficos simples (linha ou barras)
+
+Sem bibliotecas pesadas (Chart.js é aceitável)
+
+Responsivo
+
+Não poluir a tela (opcional botão “Ver gráfico”)
+
+🔹 2️⃣ Notificação de Inadimplência
+
+Criar alertas visuais para mensalidades pendentes:
+
+Requisitos
+
+Badge “Pendente” nos cards de alunos
+
+Card no Dashboard:
+
+“Alunos inadimplentes”
+
+“Mensalidades em atraso”
+
+Destaque visual sutil (amarelo ou laranja, não vermelho)
+
+Regra
+
+Mensalidade vencida = mês anterior não pago
+
+Não bloquear o uso do sistema
+
+Apenas alerta visual (sem automações agressivas)
+
+🔹 3️⃣ Comparativo Mensal em Relatórios
+
+Ao gerar relatório mensal:
+
+Incluir
+
+Comparação com o mês anterior:
+
+Entradas
+
+Saídas
+
+Saldo
+
+Exibir:
+
+↑ crescimento
+
+↓ queda
+
+→ estável
+
+Visual
+
+Cards pequenos de comparação
+
+Não precisa gráfico complexo
+
+🔹 4️⃣ Pagamento / Comissão de Professores
+
+Criar gestão financeira simples da equipe, sem virar folha de pagamento.
+
+Modelo sugerido
+
+Professor pode ter:
+
+Valor fixo por mês ou
+
+Comissão por aluno ou
+
+Comissão percentual da turma
+
+Funcionalidades
+
+Campo opcional no cadastro do professor:
+
+tipoPagamento: fixo | comissão
+
+valorPagamento
+
+Relatório mensal:
+
+Quanto cada professor deveria receber
+
+Não gerar pagamento automático
+
+Apenas controle e referência
+
+🔹 5️⃣ Histórico de Ações do Aluno (Timeline)
+
+Criar um histórico automático por aluno:
+
+Registrar eventos como:
+
+Matrícula criada
+
+Trancamento
+
+Reativação
+
+Exclusão
+
+Pagamento de mensalidade
+
+Aula avulsa
+
+Visual
+
+Timeline no card ou modal do aluno
+
+Ordem cronológica
+
+Texto simples (ex: “Mensalidade paga – Jan/2026”)
+
+🔹 6️⃣ Dias da Semana Estruturados nas Turmas
+
+Substituir o campo “Horário” livre por estrutura:
+
+Modelo
+
+Dias da semana (checkbox):
+
+Segunda → Domingo
+
+Campo horário:
+
+Ex: 18:00 – 19:30
+
+Benefícios
+
+Facilita leitura
+
+Permite filtros futuros
+
+Evita inconsistência de texto
+
+Compatibilidade
+
+Turmas antigas com horário em texto continuam funcionando
+
+Campo estruturado é opcional inicialmente
+
+📦 ENTREGA ESPERADA
+1️⃣ Diagnóstico
+
+Antes de implementar, diga:
+
+O que já existe
+
+O que precisa ser criado
+
+Dependências entre módulos
+
+2️⃣ Plano Incremental
+
+Dividir em fases, por exemplo:
+
+Fase A — Visual & Insight
+
+Gráficos
+
+Alertas de inadimplência
+
+Fase B — Financeiro Avançado
+
+Comparativo mensal
+
+Comissão de professores
+
+Fase C — Organização
+
+Timeline do aluno
+
+Horários estruturados
+
+Cada tarefa deve indicar:
+
+Arquivo afetado
+
+Impacto
+
+Risco (baixo / médio)
+
+🚫 NÃO FAZER
+
+Não transformar em sistema contábil
+
+Não adicionar backend
+
+Não usar banco externo
+
+Não exigir login/autenticação
+
+✅ RESULTADO FINAL DESEJADO
+
+Um sistema:
+
+Visualmente mais informativo
+
+Financeiramente mais claro
+
+Profissional para uso diário
+
+Simples o suficiente para não virar “peso”
