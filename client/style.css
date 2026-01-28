@@ -80,8 +80,13 @@ body.dark-mode input,
 body.dark-mode select,
 body.dark-mode textarea {
   background: #0f172a;
-  color: var(--color-text-primary);
+  color: #f1f5f9;
   border-color: var(--color-border);
+}
+
+body.dark-mode select option {
+  background: #1e293b;
+  color: #f1f5f9;
 }
 
 body.dark-mode input::placeholder,
