@@ -1,0 +1,99 @@
+Você é um desenvolvedor frontend sênior, especialista em UX, controle de acesso simples e aplicações em JavaScript puro.
+
+Estou desenvolvendo um sistema de gestão para uma escola de dança chamada “Bailado Carioca”.
+O sistema é funcional, estável e usa JavaScript puro com localStorage.
+Atualmente o sistema abre diretamente no Dashboard.
+
+---
+
+## 🎯 OBJETIVO DESTE CICLO
+Implementar um sistema simples de:
+- Tela de abertura (Welcome Screen)
+- Login e senha local
+- Controle básico de privacidade por perfil
+Sem backend, sem refatorar o sistema existente.
+
+---
+
+## ⚠️ REGRAS ABSOLUTAS
+- NÃO refatorar lógica existente
+- NÃO alterar estrutura de dados atual
+- NÃO quebrar funcionalidades
+- NÃO introduzir backend
+- NÃO usar frameworks
+- JavaScript puro + localStorage
+- Layout atual deve ser respeitado
+
+---
+
+## 🧱 PARTE 1 — TELA DE ABERTURA (OBRIGATÓRIA)
+
+Criar uma tela inicial antes do Dashboard, contendo:
+- Logo do Bailado Carioca (efeito 3D é opcional, não obrigatório)
+- Texto:
+  “Bem-vindo ao Sistema de Gestão do Bailado Carioca”
+- Botão: “Entrar no sistema”
+
+📌 O sistema NÃO deve acessar nenhuma aba sem passar por essa tela.
+
+---
+
+## 🧱 PARTE 2 — LOGIN SIMPLES (LOCAL)
+
+Implementar um login local com:
+- Campo usuário
+- Campo senha
+- Validação via localStorage
+
+Usuários podem ser definidos estaticamente, por exemplo:
+- Edson → perfil: admin
+- Lívia → perfil: admin
+
+📌 Não é necessário criptografia avançada.
+📌 Segurança básica e funcional é suficiente para este contexto.
+
+---
+
+## 🧱 PARTE 3 — PERFIS E PRIVACIDADE
+
+Implementar controle de visualização baseado em perfil:
+
+### Perfil ADMIN
+- Acesso total ao sistema
+- Visualiza Dashboard, Caixa, Mensalidades, Relatórios, etc.
+
+### Perfil OPERACIONAL / CADASTRO
+- Pode acessar:
+  - Alunos
+  - Bolsistas
+  - Presença
+  - Turmas
+- NÃO pode acessar:
+  - Caixa
+  - Mensalidades
+  - Relatórios financeiros
+- Valores financeiros devem ser ocultados ou bloqueados
+
+📌 O bloqueio é visual e de navegação, não precisa ser criptográfico.
+
+---
+
+## 🔄 COMPORTAMENTO DO SISTEMA
+
+- Se não estiver logado → mostrar apenas tela de abertura/login
+- Após login → redirecionar para Dashboard ou Alunos (dependendo do perfil)
+- Criar botão “Sair” (logout)
+- Logout limpa apenas a sessão, não os dados
+
+---
+
+## 🛠️ ENTREGA ESPERADA
+- Implementação incremental
+- Código organizado
+- UX profissional e clara
+- Sensação de sistema real e confiável
+- Zero impacto nas funcionalidades existentes
+
+🚨 IMPORTANTE:
+Este sistema será usado internamente.
+Priorize simplicidade, clareza e segurança suficiente para o contexto.

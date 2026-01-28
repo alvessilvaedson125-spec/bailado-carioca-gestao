@@ -16,9 +16,31 @@
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     </head>
     <body>
+        <!-- Welcome/Login Screen -->
+        <div id="welcome-screen" class="welcome-screen">
+            <div class="welcome-container">
+                <img src="/logo.jpg" alt="Bailado Carioca" class="welcome-logo">
+                <h1 class="welcome-title">Bem-vindo ao Sistema de Gestao</h1>
+                <p class="welcome-subtitle">Bailado Carioca</p>
+                <div id="login-form" class="login-form" style="display: none;">
+                    <div class="field">
+                        <label for="login-usuario">Usuario</label>
+                        <input type="text" id="login-usuario" placeholder="Digite seu usuario" autocomplete="username">
+                    </div>
+                    <div class="field">
+                        <label for="login-senha">Senha</label>
+                        <input type="password" id="login-senha" placeholder="Digite sua senha" autocomplete="current-password">
+                    </div>
+                    <div id="login-error" class="login-error" style="display: none;"></div>
+                    <button type="button" id="btn-login" class="btn btn-primary btn-full" data-testid="button-login">Entrar</button>
+                </div>
+                <button type="button" id="btn-entrar" class="btn btn-primary btn-lg" data-testid="button-enter-system">Entrar no Sistema</button>
+            </div>
+        </div>
+
         <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Abrir menu">&#9776;</button>
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
-        <div id="app">
+        <div id="app" style="display: none;">
             <nav id="sidebar" aria-label="Menu principal">
                 <div class="brand" style="text-align: center;">
                     <img src="/logo.jpg" alt="Bailado Carioca" style="width: 100%; max-width: 180px; height: auto; filter: invert(1);">
@@ -35,7 +57,10 @@
             <main id="main-content">
                 <header class="top-bar">
                     <h1 id="page-title">Dashboard</h1>
-                    <div class="user-profile">Admin</div>
+                    <div class="user-area">
+                        <span id="user-name" class="user-profile"></span>
+                        <button type="button" id="btn-logout" class="btn btn-sm btn-secondary" data-testid="button-logout">Sair</button>
+                    </div>
                 </header>
 
                 <section id="content-area" aria-live="polite">

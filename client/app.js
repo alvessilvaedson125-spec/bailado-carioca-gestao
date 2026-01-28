@@ -115,6 +115,84 @@ const DataStore = {
 };
 
 /* =========================
+   AUTH - Sistema de Autenticacao
+========================= */
+const Auth = {
+  // Usuarios do sistema (pode ser expandido via localStorage futuramente)
+  usuarios: [
+    { usuario: "edson", senha: "bailado2024", nome: "Edson", perfil: "admin" },
+    { usuario: "livia", senha: "bailado2024", nome: "Livia", perfil: "admin" },
+    { usuario: "operador", senha: "op2024", nome: "Operador", perfil: "operacional" },
+  ],
+
+  // Paginas permitidas por perfil
+  permissoes: {
+    admin: ["dashboard", "alunos", "bolsistas", "trancados", "turmas", "unidades", "professores", "mensalidades", "recibos", "caixa", "presenca", "relatorio", "lixeira", "config"],
+    operacional: ["alunos", "bolsistas", "presenca", "turmas", "unidades", "trancados"],
+  },
+
+  // Paginas com dados financeiros (ocultar para operacional)
+  paginasFinanceiras: ["dashboard", "mensalidades", "caixa", "relatorio", "recibos"],
+
+  /** Retorna sessao atual do localStorage */
+  getSessao() {
+    const raw = localStorage.getItem("bailadoSessao");
+    return raw ? JSON.parse(raw) : null;
+  },
+
+  /** Salva sessao no localStorage */
+  setSessao(usuario) {
+    localStorage.setItem("bailadoSessao", JSON.stringify({
+      usuario: usuario.usuario,
+      nome: usuario.nome,
+      perfil: usuario.perfil,
+      loginEm: new Date().toISOString(),
+    }));
+  },
+
+  /** Limpa sessao */
+  logout() {
+    localStorage.removeItem("bailadoSessao");
+  },
+
+  /** Valida credenciais */
+  validarLogin(usuario, senha) {
+    return this.usuarios.find(u => 
+      u.usuario.toLowerCase() === usuario.toLowerCase() && u.senha === senha
+    );
+  },
+
+  /** Verifica se esta logado */
+  estaLogado() {
+    return this.getSessao() !== null;
+  },
+
+  /** Retorna perfil atual */
+  getPerfilAtual() {
+    const sessao = this.getSessao();
+    return sessao ? sessao.perfil : null;
+  },
+
+  /** Verifica se tem acesso a uma pagina */
+  temAcesso(pagina) {
+    const perfil = this.getPerfilAtual();
+    if (!perfil) return false;
+    return this.permissoes[perfil]?.includes(pagina) || false;
+  },
+
+  /** Verifica se pode ver dados financeiros */
+  podeVerFinanceiro() {
+    return this.getPerfilAtual() === "admin";
+  },
+
+  /** Retorna pagina inicial baseada no perfil */
+  getPaginaInicial() {
+    const perfil = this.getPerfilAtual();
+    return perfil === "admin" ? "dashboard" : "alunos";
+  },
+};
+
+/* =========================
    UI
 ========================= */
 const UI = {
@@ -125,9 +203,108 @@ const UI = {
   init() {
     DataStore.load();
     DataStore.migrateAlunosStatus();
-    this.renderMenu();
     this.initTheme();
-    this.navigate("dashboard");
+    this.initAuth();
+  },
+
+  /** Inicializa sistema de autenticacao */
+  initAuth() {
+    const welcomeScreen = document.getElementById("welcome-screen");
+    const appContainer = document.getElementById("app");
+    const btnEntrar = document.getElementById("btn-entrar");
+    const loginForm = document.getElementById("login-form");
+    const btnLogin = document.getElementById("btn-login");
+    const loginUsuario = document.getElementById("login-usuario");
+    const loginSenha = document.getElementById("login-senha");
+    const loginError = document.getElementById("login-error");
+    const btnLogout = document.getElementById("btn-logout");
+    const userName = document.getElementById("user-name");
+
+    // Verifica se ja esta logado
+    if (Auth.estaLogado()) {
+      this.entrarNoSistema();
+      return;
+    }
+
+    // Mostra tela de boas-vindas
+    welcomeScreen.style.display = "flex";
+    appContainer.style.display = "none";
+
+    // Clique em "Entrar no Sistema" mostra formulario de login
+    btnEntrar.onclick = () => {
+      btnEntrar.style.display = "none";
+      loginForm.style.display = "block";
+      loginUsuario.focus();
+    };
+
+    // Funcao de login
+    const tentarLogin = () => {
+      const usuario = loginUsuario.value.trim();
+      const senha = loginSenha.value;
+
+      if (!usuario || !senha) {
+        loginError.textContent = "Preencha usuario e senha";
+        loginError.style.display = "block";
+        return;
+      }
+
+      const user = Auth.validarLogin(usuario, senha);
+      if (user) {
+        Auth.setSessao(user);
+        loginError.style.display = "none";
+        this.entrarNoSistema();
+      } else {
+        loginError.textContent = "Usuario ou senha incorretos";
+        loginError.style.display = "block";
+        loginSenha.value = "";
+        loginSenha.focus();
+      }
+    };
+
+    btnLogin.onclick = tentarLogin;
+    loginSenha.onkeypress = (e) => {
+      if (e.key === "Enter") tentarLogin();
+    };
+    loginUsuario.onkeypress = (e) => {
+      if (e.key === "Enter") loginSenha.focus();
+    };
+
+    // Logout
+    btnLogout.onclick = () => {
+      Auth.logout();
+      location.reload();
+    };
+
+    // Atualiza nome do usuario
+    const sessao = Auth.getSessao();
+    if (sessao) {
+      userName.textContent = sessao.nome;
+    }
+  },
+
+  /** Entra no sistema apos login */
+  entrarNoSistema() {
+    const welcomeScreen = document.getElementById("welcome-screen");
+    const appContainer = document.getElementById("app");
+    const userName = document.getElementById("user-name");
+    const btnLogout = document.getElementById("btn-logout");
+
+    welcomeScreen.style.display = "none";
+    appContainer.style.display = "";
+
+    const sessao = Auth.getSessao();
+    if (sessao) {
+      userName.textContent = sessao.nome;
+    }
+
+    // Configura logout
+    btnLogout.onclick = () => {
+      Auth.logout();
+      location.reload();
+    };
+
+    this.renderMenu();
+    this.navigate(Auth.getPaginaInicial());
   },
 
   initTheme() {
@@ -160,7 +337,7 @@ const UI = {
   },
 
   renderMenu() {
-    const pages = [
+    const allPages = [
       ["dashboard", "Dashboard"],
       ["alunos", "Alunos"],
       ["bolsistas", "Bolsistas"],
@@ -177,6 +354,9 @@ const UI = {
       ["config", "Configuracoes"],
     ];
 
+    // Filtra paginas baseado no perfil do usuario
+    const pages = allPages.filter(([id]) => Auth.temAcesso(id));
+
     this.menu.innerHTML = "";
     pages.forEach(([id, label]) => {
       const li = document.createElement("li");
@@ -190,6 +370,12 @@ const UI = {
 
   navigate(page) {
     if (!pagesRenderers[page]) return;
+    
+    // Verifica permissao de acesso
+    if (!Auth.temAcesso(page)) {
+      alert("Voce nao tem permissao para acessar esta pagina.");
+      return;
+    }
 
     DataStore.state.currentPage = page;
 
