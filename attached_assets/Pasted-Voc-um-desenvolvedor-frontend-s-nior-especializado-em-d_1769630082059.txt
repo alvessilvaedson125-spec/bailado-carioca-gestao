@@ -1,0 +1,86 @@
+Você é um desenvolvedor frontend sênior especializado em depuração de erros críticos de DOM.
+
+O sistema de gestão do Bailado Carioca (JavaScript puro + localStorage) está com o seguinte problema:
+
+- A interface carrega visualmente
+- O menu lateral aparece
+- MAS os cliques não funcionam
+- A navegação entre abas não responde
+- O Console do navegador mostra erros do tipo:
+  "Cannot read properties of null"
+  "querySelector returned null"
+
+---
+
+## ⚠️ DIAGNÓSTICO CONFIRMADO
+O JavaScript está tentando acessar elementos do DOM que NÃO EXISTEM mais,
+ou cujo ID/classe foi alterado no HTML.
+
+Isso quebra:
+- inicialização do app
+- registro de event listeners
+- navegação entre abas
+
+---
+
+## ⚠️ REGRAS ABSOLUTAS
+- NÃO criar novas funcionalidades
+- NÃO alterar layout visual
+- NÃO alterar identidade visual
+- NÃO criar welcome screen nova
+- NÃO alterar fluxo de login
+- NÃO refatorar código
+- NÃO usar PWA, manifest ou service worker
+
+Objetivo único: **restaurar o contrato correto entre HTML e JavaScript**.
+
+---
+
+## 🎯 OBJETIVO
+Garantir que:
+1. O container raiz esperado pelo JavaScript EXISTE no HTML
+2. O ID/classe do container no HTML bate exatamente com o usado no JS
+3. O JavaScript só execute após o DOM estar carregado
+4. Todos os event listeners do menu sejam registrados corretamente
+5. A navegação entre abas volte a funcionar
+
+---
+
+## 🛠️ AÇÕES OBRIGATÓRIAS
+
+1. Abrir o `index.html` e identificar o container raiz original do sistema
+   (ex: `<div id="app">`, `<div id="root">`, etc.)
+
+2. Abrir o arquivo JS principal (`app.js`, `main.js` ou equivalente) e:
+   - localizar onde o DOM é selecionado (`getElementById`, `querySelector`)
+   - verificar se o seletor corresponde exatamente ao HTML
+
+3. Corrigir QUALQUER divergência entre:
+   - ID/classe no HTML
+   - seletor usado no JavaScript
+
+4. Garantir que o script JS:
+   - use `defer` no `<script>` OU
+   - execute após `DOMContentLoaded`
+
+5. Não mover lógica de navegação
+6. Não alterar handlers existentes
+7. Não criar novos containers
+
+---
+
+## 📌 CRITÉRIOS DE ACEITE
+A correção está correta se:
+- O Console do navegador NÃO exibe erros vermelhos
+- O menu lateral responde a clique
+- A navegação entre abas funciona
+- O sistema se comporta como antes da quebra
+- Nenhuma funcionalidade foi alterada
+
+---
+
+🚨 IMPORTANTE FINAL
+Este é um bug estrutural de DOM.
+Corrija apenas o necessário.
+Não “melhore” o sistema.
+Não adicione nada novo.
