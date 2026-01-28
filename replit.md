@@ -44,17 +44,18 @@ client/
 
 1. **Dashboard**: Overview with summary statistics
 2. **Alunos (Students)**: Student management with fields: nome, telefone, email, cpf, turma, unidade, tipoMatricula, mensalidade
-3. **Trancados (Suspended)**: View and manage suspended students
-4. **Turmas (Classes)**: Class management showing enrolled students
-5. **Unidades (Units)**: Location/unit management
-6. **Professores (Teachers)**: Teacher and monitor registration
-7. **Mensalidades (Tuition)**: Payment tracking and receipts
-8. **Recibos (Receipts)**: Professional receipt generation (text, PDF, WhatsApp)
-9. **Caixa (Cash Flow)**: Financial entries with categoria (mensalidade, aula_avulsa, despesa, outros)
-10. **Presenca (Attendance)**: Student attendance tracking with reports
-11. **Relatorio Mensal**: Monthly financial report with PDF/print export
-12. **Lixeira (Trash)**: View and restore deleted items
-13. **Configuracoes (Settings)**: Data import/export and preferences
+3. **Bolsistas (Scholarships)**: Scholarship student management with filters by turma and status
+4. **Trancados (Suspended)**: View and manage suspended students
+5. **Turmas (Classes)**: Class management showing enrolled students
+6. **Unidades (Units)**: Location/unit management
+7. **Professores (Teachers)**: Teacher and monitor registration
+8. **Mensalidades (Tuition)**: Payment tracking and receipts (excludes bolsistas)
+9. **Recibos (Receipts)**: Professional receipt generation (text, PDF, WhatsApp)
+10. **Caixa (Cash Flow)**: Financial entries with categoria (mensalidade, aula_avulsa, despesa, outros)
+11. **Presenca (Attendance)**: Student attendance tracking with reports
+12. **Relatorio Mensal**: Monthly financial report with PDF/print export
+13. **Lixeira (Trash)**: View and restore deleted items
+14. **Configuracoes (Settings)**: Data import/export and preferences
 
 ## Recent Changes (Version 4)
 
@@ -92,6 +93,22 @@ client/
 - Checkboxes in Turma modal for each day of the week
 - Separate horarioTempo field for time (e.g., "19:00 - 20:30")
 - Combined horario field for display compatibility
+
+### Bolsistas (Scholarship Students) - Version 6
+- New `bolsa` field on student data: ativa (boolean), tipo (integral/parcial/apoio), observacao
+- **Bolsistas Page**: List only students with bolsa.ativa === true
+- Filters by turma and status (ativo/trancado)
+- Card display: name, badges (Bolsista, Type, Status), turma, observation
+- Actions: Historico, Presenca, Editar Bolsa, Remover Bolsa
+- Modal "Conceder Bolsa" to grant scholarship to regular students
+- Modal "Editar Bolsa" to update scholarship type and observation
+- Remove bolsa keeps student in system (only removes scholarship)
+- **Integration with Mensalidades**: Bolsistas excluded from payment selection
+- **Integration with Inadimplentes**: Bolsistas never marked as delinquent
+- **Integration with Presenca**: Bolsistas appear with tipoMatricula = "bolsista"
+- **Historico Events**: "Bolsa concedida", "Bolsa atualizada", "Bolsa removida"
+- isBolsista(aluno) helper function for checking scholarship status
+- Zero impact on Caixa, financial reports, or receipts
 
 ### Attendance System (Presenca) - Version 5
 - New `presencas` entity in DataStore for tracking attendance

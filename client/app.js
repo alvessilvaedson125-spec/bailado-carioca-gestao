@@ -163,6 +163,7 @@ const UI = {
     const pages = [
       ["dashboard", "Dashboard"],
       ["alunos", "Alunos"],
+      ["bolsistas", "Bolsistas"],
       ["trancados", "Trancados"],
       ["turmas", "Turmas"],
       ["unidades", "Unidades"],
@@ -199,6 +200,7 @@ const UI = {
     const titulos = {
       dashboard: "Dashboard",
       alunos: "Alunos",
+      bolsistas: "Bolsistas",
       trancados: "Trancados",
       turmas: "Turmas",
       unidades: "Unidades",
@@ -319,7 +321,7 @@ function contarInadimplentes() {
   const mesRefStr = String(mesRef).padStart(2, "0");
   const anoRefStr = String(anoAnterior);
   
-  const alunosAtivos = DataStore.state.data.alunos.filter(a => a.status === "ativo");
+  const alunosAtivos = DataStore.state.data.alunos.filter(a => a.status === "ativo" && !isBolsista(a));
   const inadimplentes = [];
   
   alunosAtivos.forEach(aluno => {
@@ -343,6 +345,10 @@ function contarInadimplentes() {
 
 /** Verifica se aluno esta inadimplente */
 function alunoInadimplente(alunoId) {
+  // Bolsistas nao tem mensalidade, entao nunca sao inadimplentes
+  const aluno = DataStore.findById("alunos", alunoId);
+  if (isBolsista(aluno)) return false;
+  
   const hoje = new Date();
   const mesAnterior = hoje.getMonth();
   const anoAnterior = mesAnterior === 0 ? hoje.getFullYear() - 1 : hoje.getFullYear();
@@ -795,6 +801,10 @@ const pagesRenderers = {
     renderAlunos();
   },
 
+  bolsistas() {
+    renderBolsistas();
+  },
+
   trancados() {
     renderTrancados();
   },
@@ -979,6 +989,379 @@ function renderCardsAlunosAtivos(buscaNome) {
   });
 
   container.appendChild(grid);
+}
+
+/* =========================
+   BOLSISTAS
+========================= */
+
+/** Verifica se aluno e bolsista */
+function isBolsista(aluno) {
+  return aluno?.bolsa?.ativa === true;
+}
+
+/** Renderiza pagina de Bolsistas */
+function renderBolsistas() {
+  const turmas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
+  
+  // Header com filtros
+  const header = document.createElement("div");
+  header.style.cssText = "display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;";
+  
+  // Filtro por turma
+  const selectTurma = document.createElement("select");
+  selectTurma.id = "filtro-turma-bolsista";
+  selectTurma.style.cssText = "padding: 0.5rem; min-width: 180px;";
+  selectTurma.innerHTML = '<option value="">Todas as Turmas</option>';
+  turmas.forEach(t => {
+    selectTurma.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
+  });
+  header.appendChild(selectTurma);
+  
+  // Filtro por status
+  const selectStatus = document.createElement("select");
+  selectStatus.id = "filtro-status-bolsista";
+  selectStatus.style.cssText = "padding: 0.5rem;";
+  selectStatus.innerHTML = `
+    <option value="">Todos os Status</option>
+    <option value="ativo">Ativos</option>
+    <option value="trancado">Trancados</option>
+  `;
+  header.appendChild(selectStatus);
+  
+  // Botao de adicionar bolsista
+  const btnNovo = document.createElement("button");
+  btnNovo.className = "btn-primary";
+  btnNovo.textContent = "+ Conceder Bolsa";
+  btnNovo.setAttribute("data-testid", "button-new-scholarship");
+  btnNovo.onclick = () => abrirModalConcederBolsa();
+  header.appendChild(btnNovo);
+  
+  UI.content.appendChild(header);
+  
+  // Container de cards
+  const container = document.createElement("div");
+  container.id = "bolsistas-container";
+  UI.content.appendChild(container);
+  
+  // Event listeners para filtros
+  selectTurma.onchange = () => renderCardsBolsistas();
+  selectStatus.onchange = () => renderCardsBolsistas();
+  
+  renderCardsBolsistas();
+}
+
+/** Renderiza cards de bolsistas */
+function renderCardsBolsistas() {
+  const container = document.getElementById("bolsistas-container");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  const filtroTurma = document.getElementById("filtro-turma-bolsista")?.value || "";
+  const filtroStatus = document.getElementById("filtro-status-bolsista")?.value || "";
+  
+  let bolsistas = DataStore.state.data.alunos.filter(a => isBolsista(a));
+  
+  // Aplicar filtros
+  if (filtroTurma) {
+    bolsistas = bolsistas.filter(a => a.turma === filtroTurma);
+  }
+  if (filtroStatus) {
+    bolsistas = bolsistas.filter(a => a.status === filtroStatus);
+  }
+  
+  if (bolsistas.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <h3>Nenhum bolsista encontrado</h3>
+        <p>Use o botao "+ Conceder Bolsa" para adicionar um bolsista.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  // Resumo
+  const resumo = document.createElement("div");
+  resumo.className = "summary-card";
+  resumo.style.marginBottom = "1.5rem";
+  const totalAtivos = bolsistas.filter(b => b.status === "ativo").length;
+  const totalTrancados = bolsistas.filter(b => b.status === "trancado").length;
+  resumo.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <strong style="font-size: 1.1rem;">Resumo de Bolsistas</strong>
+        <p style="color: var(--color-text-secondary); margin-top: 0.25rem;">${bolsistas.length} bolsista(s) encontrado(s)</p>
+      </div>
+      <div style="display: flex; gap: 1rem;">
+        <div style="text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: 600; color: #16a34a;">${totalAtivos}</div>
+          <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Ativos</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: 600; color: #f59e0b;">${totalTrancados}</div>
+          <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Trancados</div>
+        </div>
+      </div>
+    </div>
+  `;
+  container.appendChild(resumo);
+  
+  // Grid de cards
+  const grid = criarGridCards();
+  
+  bolsistas.forEach(aluno => {
+    const turma = DataStore.findById("turmas", aluno.turma);
+    const tipoBolsa = aluno.bolsa?.tipo || "integral";
+    const statusClass = aluno.status === "ativo" ? "badge-success" : "badge-warning";
+    const statusLabel = aluno.status === "ativo" ? "Ativo" : "Trancado";
+    
+    const card = document.createElement("div");
+    card.className = "summary-card";
+    card.innerHTML = `
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+        <div>
+          <strong style="font-size: 1.1rem;">${aluno.nome}</strong>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem; flex-wrap: wrap;">
+            <span class="badge badge-info">Bolsista</span>
+            <span class="badge badge-muted">${formatarTipoBolsa(tipoBolsa)}</span>
+            <span class="badge ${statusClass}">${statusLabel}</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-body" style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 0.75rem;">
+        <p style="margin: 0.25rem 0;">Turma: ${turma?.nome || "Sem turma"}</p>
+        ${aluno.bolsa?.observacao ? `<p style="margin: 0.25rem 0; font-style: italic;">"${aluno.bolsa.observacao}"</p>` : ""}
+      </div>
+      <div class="card-footer" style="display: flex; gap: 0.5rem; flex-wrap: wrap;"></div>
+    `;
+    
+    const footer = card.querySelector(".card-footer");
+    
+    // Botao Ver Historico
+    const btnHistorico = document.createElement("button");
+    btnHistorico.className = "btn-secondary btn-sm";
+    btnHistorico.textContent = "Historico";
+    btnHistorico.onclick = () => abrirModalHistorico(aluno);
+    footer.appendChild(btnHistorico);
+    
+    // Botao Ver Presenca
+    const btnPresenca = document.createElement("button");
+    btnPresenca.className = "btn-secondary btn-sm";
+    btnPresenca.textContent = "Presenca";
+    btnPresenca.onclick = () => {
+      UI.navigate("presenca");
+    };
+    footer.appendChild(btnPresenca);
+    
+    // Botao Editar Bolsa
+    const btnEditar = document.createElement("button");
+    btnEditar.className = "btn-secondary btn-sm";
+    btnEditar.textContent = "Editar Bolsa";
+    btnEditar.onclick = () => abrirModalEditarBolsa(aluno);
+    footer.appendChild(btnEditar);
+    
+    // Botao Remover Bolsa
+    const btnRemover = document.createElement("button");
+    btnRemover.className = "btn-muted btn-sm";
+    btnRemover.textContent = "Remover Bolsa";
+    btnRemover.style.color = "#dc2626";
+    btnRemover.onclick = () => removerBolsa(aluno);
+    footer.appendChild(btnRemover);
+    
+    grid.appendChild(card);
+  });
+  
+  container.appendChild(grid);
+}
+
+/** Formata tipo de bolsa para exibicao */
+function formatarTipoBolsa(tipo) {
+  const tipos = {
+    integral: "Integral",
+    parcial: "Parcial",
+    apoio: "Apoio"
+  };
+  return tipos[tipo] || tipo;
+}
+
+/** Modal para conceder bolsa a um aluno */
+function abrirModalConcederBolsa() {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+  
+  // Alunos que NAO sao bolsistas
+  const alunosDisponiveis = DataStore.state.data.alunos.filter(a => 
+    a.status === "ativo" && !isBolsista(a)
+  );
+  
+  modal.innerHTML = `
+    <h2 class="modal-title">Conceder Bolsa</h2>
+    
+    <div class="modal-grid">
+      <div class="field">
+        <label>Aluno *</label>
+        <select id="bolsa-aluno" data-testid="select-scholarship-student">
+          <option value="">Selecione um aluno</option>
+        </select>
+      </div>
+      
+      <div class="field">
+        <label>Tipo de Bolsa *</label>
+        <select id="bolsa-tipo" data-testid="select-scholarship-type">
+          <option value="integral">Integral (100%)</option>
+          <option value="parcial">Parcial</option>
+          <option value="apoio">Apoio</option>
+        </select>
+      </div>
+      
+      <div class="field full-width">
+        <label>Observacao</label>
+        <textarea id="bolsa-obs" rows="3" placeholder="Motivo da bolsa, condicoes, etc."></textarea>
+      </div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="modal-btn-secondary">Cancelar</button>
+      <button class="modal-btn-primary" data-testid="button-grant-scholarship">Conceder Bolsa</button>
+    </div>
+  `;
+  
+  // Preencher select de alunos
+  const selectAluno = modal.querySelector("#bolsa-aluno");
+  alunosDisponiveis.forEach(a => {
+    const option = document.createElement("option");
+    option.value = a.id;
+    option.textContent = a.nome;
+    selectAluno.appendChild(option);
+  });
+  
+  modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
+  
+  modal.querySelector(".modal-btn-primary").onclick = () => {
+    const alunoId = selectAluno.value;
+    const tipo = modal.querySelector("#bolsa-tipo").value;
+    const obs = modal.querySelector("#bolsa-obs").value.trim();
+    
+    if (!alunoId) {
+      alert("Selecione um aluno!");
+      return;
+    }
+    
+    const aluno = DataStore.findById("alunos", alunoId);
+    if (!aluno) return;
+    
+    // Definir bolsa
+    aluno.bolsa = {
+      ativa: true,
+      tipo: tipo,
+      observacao: obs,
+      concedidaEm: new Date().toISOString()
+    };
+    
+    // Atualizar tipoMatricula para bolsista (para presenca)
+    aluno.tipoMatricula = "bolsista";
+    
+    DataStore.save();
+    
+    // Adicionar evento ao historico
+    adicionarEventoAluno(alunoId, `Bolsa concedida - Tipo: ${formatarTipoBolsa(tipo)}`);
+    
+    overlay.remove();
+    renderCardsBolsistas();
+    alert("Bolsa concedida com sucesso!");
+  };
+  
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+/** Modal para editar bolsa de um aluno */
+function abrirModalEditarBolsa(aluno) {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+  
+  modal.innerHTML = `
+    <h2 class="modal-title">Editar Bolsa - ${aluno.nome}</h2>
+    
+    <div class="modal-grid">
+      <div class="field">
+        <label>Tipo de Bolsa *</label>
+        <select id="bolsa-tipo">
+          <option value="integral" ${aluno.bolsa?.tipo === "integral" ? "selected" : ""}>Integral (100%)</option>
+          <option value="parcial" ${aluno.bolsa?.tipo === "parcial" ? "selected" : ""}>Parcial</option>
+          <option value="apoio" ${aluno.bolsa?.tipo === "apoio" ? "selected" : ""}>Apoio</option>
+        </select>
+      </div>
+      
+      <div class="field full-width">
+        <label>Observacao</label>
+        <textarea id="bolsa-obs" rows="3">${aluno.bolsa?.observacao || ""}</textarea>
+      </div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="modal-btn-secondary">Cancelar</button>
+      <button class="modal-btn-primary">Salvar</button>
+    </div>
+  `;
+  
+  modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
+  
+  modal.querySelector(".modal-btn-primary").onclick = () => {
+    const tipo = modal.querySelector("#bolsa-tipo").value;
+    const obs = modal.querySelector("#bolsa-obs").value.trim();
+    
+    const tipoAnterior = aluno.bolsa?.tipo;
+    
+    aluno.bolsa = {
+      ...aluno.bolsa,
+      tipo: tipo,
+      observacao: obs,
+      atualizadaEm: new Date().toISOString()
+    };
+    
+    DataStore.save();
+    
+    // Adicionar evento ao historico se tipo mudou
+    if (tipoAnterior !== tipo) {
+      adicionarEventoAluno(aluno.id, `Bolsa atualizada - Tipo: ${formatarTipoBolsa(tipoAnterior)} -> ${formatarTipoBolsa(tipo)}`);
+    } else {
+      adicionarEventoAluno(aluno.id, "Bolsa atualizada");
+    }
+    
+    overlay.remove();
+    renderCardsBolsistas();
+    alert("Bolsa atualizada com sucesso!");
+  };
+  
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+/** Remove bolsa de um aluno (sem excluir o aluno) */
+function removerBolsa(aluno) {
+  if (!confirm(`Remover bolsa de ${aluno.nome}?\n\nO aluno continuara cadastrado no sistema, apenas perdera a bolsa.`)) {
+    return;
+  }
+  
+  // Remover bolsa
+  aluno.bolsa = {
+    ativa: false,
+    removidaEm: new Date().toISOString()
+  };
+  
+  // Restaurar tipoMatricula para normal
+  aluno.tipoMatricula = "regular";
+  
+  DataStore.save();
+  
+  // Adicionar evento ao historico
+  adicionarEventoAluno(aluno.id, "Bolsa removida");
+  
+  renderCardsBolsistas();
+  alert("Bolsa removida. O aluno continua cadastrado no sistema.");
 }
 
 /** Renderiza página de alunos TRANCADOS */
@@ -2135,7 +2518,7 @@ function abrirModalMensalidade(mensExistente = null) {
 
   const selectAluno = modal.querySelector("#aluno");
   DataStore.state.data.alunos
-    .filter(a => a.status === "ativo")
+    .filter(a => a.status === "ativo" && !isBolsista(a))
     .forEach(aluno => {
       const option = document.createElement("option");
       option.value = aluno.id;

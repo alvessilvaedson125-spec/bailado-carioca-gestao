@@ -1,0 +1,126 @@
+Você é um desenvolvedor frontend sênior, especializado em sistemas de gestão educacional em JavaScript puro, com foco em clareza de regras, rastreabilidade e segurança de dados.
+
+Estou desenvolvendo um sistema de gestão para uma escola de dança chamada “Bailado Carioca”.
+O sistema é estável, funcional e já possui módulos de:
+Alunos, Turmas, Professores, Mensalidades, Caixa, Presença, Recibos, Relatórios e Lixeira.
+
+Este é um NOVO CICLO FUNCIONAL.
+A funcionalidade a seguir deve ser adicionada de forma incremental, sem quebrar nada existente.
+
+---
+
+## ⚠️ REGRAS ABSOLUTAS
+- NÃO refatorar código existente
+- NÃO alterar funcionalidades já prontas
+- NÃO alterar fluxo de Caixa, Mensalidades ou Recibos
+- NÃO criar lançamentos financeiros automáticos
+- NÃO introduzir frameworks ou bibliotecas novas
+- JavaScript puro + localStorage
+- Respeitar layout, UX/UI e responsividade já finalizados
+
+---
+
+## 🎯 OBJETIVO DA FEATURE
+Criar uma **Área de Bolsistas**, permitindo:
+- definir claramente quem são os alunos bolsistas
+- controlar presença de bolsistas (já integrado ao módulo Presença)
+- garantir que bolsistas **NÃO entrem no Caixa**
+- manter justiça, rastreabilidade e clareza administrativa
+
+---
+
+## 🧠 CONCEITO FUNDAMENTAL
+- Bolsista **É um aluno**
+- Bolsista **não gera mensalidade**
+- Bolsista **não gera entrada no Caixa**
+- Bolsista participa normalmente das aulas
+- Bolsista tem presença registrada como qualquer aluno
+- A distinção é feita por **tipo/condição**, não por entidade separada
+
+---
+
+## 🧱 MODELAGEM DE DADOS (MÍNIMA E SEGURA)
+
+Adicionar ao cadastro do aluno um campo adicional:
+
+- bolsa:
+  - ativa: true | false
+  - tipo: "integral" | "parcial" | "apoio" (opcional)
+  - observacao (string opcional)
+
+📌 NÃO criar nova entidade separada.
+📌 Bolsista continua sendo aluno_id em todo o sistema.
+
+---
+
+## 🖥️ ÁREA / TELA "BOLSISTAS"
+
+Criar um novo item de menu chamado **“Bolsistas”**, com:
+
+### Listagem
+- Lista apenas alunos com bolsa.ativa === true
+- Card do aluno com:
+  - Nome
+  - Turma(s)
+  - Badge “Bolsista”
+  - Tipo de bolsa (se houver)
+  - Status (ativo / trancado)
+
+### Ações disponíveis
+- Ver histórico do aluno
+- Ver presença do aluno
+- Editar dados da bolsa
+- Remover bolsa (sem excluir aluno)
+
+📌 NÃO permitir:
+- geração de mensalidade
+- lançamento no Caixa
+- vínculo financeiro
+
+---
+
+## 🔄 INTEGRAÇÕES OBRIGATÓRIAS
+
+### Presença
+- Bolsistas devem aparecer normalmente na tela de Presença
+- Presenças devem ser salvas com tipo = "bolsista"
+
+### Mensalidades
+- Bolsistas NÃO devem aparecer na seleção de geração de mensalidade
+- Qualquer lógica existente deve ignorar alunos com bolsa.ativa === true
+
+### Caixa
+- Nenhuma entrada financeira deve ser criada para bolsistas
+- Nenhum impacto em saldo, relatórios financeiros ou recibos
+
+### Histórico do Aluno
+Registrar eventos automáticos:
+- “Bolsa concedida”
+- “Bolsa removida”
+- “Bolsa atualizada”
+
+---
+
+## 🔍 FILTROS E CONSULTAS
+
+Permitir:
+- filtro de alunos bolsistas por turma
+- filtro por status (ativo / trancado)
+- consulta de presença por mês/ano (reutilizando módulo existente)
+
+---
+
+## 🛠️ ENTREGA ESPERADA
+
+- Implementação incremental e segura
+- Código organizado e comentado apenas onde necessário
+- UX simples e coerente com o resto do sistema
+- Zero impacto em funcionalidades existentes
+- Bolsistas claramente identificáveis em todo o sistema
+
+🚨 IMPORTANTE:
+Esta feature NÃO é financeira.
+É administrativa e pedagógica.
+Qualquer lógica que gere valores, recibos ou lançamentos deve ser explicitamente evitada.
+
+Comece propondo a estrutura de dados e a tela “Bolsistas” antes de implementar o código final.
