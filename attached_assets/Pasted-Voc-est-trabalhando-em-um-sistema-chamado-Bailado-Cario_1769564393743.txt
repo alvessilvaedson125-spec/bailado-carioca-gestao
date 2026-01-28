@@ -1,0 +1,199 @@
+Você está trabalhando em um sistema chamado Bailado Carioca – Sistema de Gestão, já funcional, estável e em uso, desenvolvido em JavaScript puro, com localStorage, arquitetura organizada em DataStore, renderização por cards e soft delete.
+
+⚠️ IMPORTANTE
+
+❌ Não reescreva o app do zero
+
+❌ Não remova funcionalidades existentes
+
+❌ Não quebre compatibilidade com dados já salvos
+
+❌ Não introduza erros no console
+
+✅ Trabalhe apenas por análise, verificação de status e planejamento
+
+🎯 OBJETIVO DESTE PEDIDO
+
+Verificar se as funcionalidades abaixo já estão implementadas ou ainda estão pendentes
+
+Confirmar o estado real do código (implementado / parcial / inexistente)
+
+Criar um plano de tarefas incremental, organizado por prioridade, para implementar somente o que ainda falta, sem quebrar o que já existe.
+
+📋 LISTA DE FUNCIONALIDADES A VERIFICAR
+
+Analise o código atual e responda uma a uma, dizendo claramente:
+
+✅ Já implementado
+
+⚠️ Parcial (explicar o que falta)
+
+❌ Ainda não existe
+
+1️⃣ Alunos
+
+Campos opcionais email e CPF no cadastro de alunos
+
+Persistência correta desses campos no localStorage
+
+Exibição (ou não) desses campos no card do aluno
+
+2️⃣ Turmas
+
+Card da turma exibindo:
+
+Lista nominal dos alunos ativos matriculados
+
+Contador de alunos ativos (X alunos)
+
+Regra correta:
+
+Alunos trancados ou excluídos não aparecem no card da turma
+
+3️⃣ Recibos
+
+Geração automática de recibos para:
+
+Pagamento de mensalidade
+
+Aula avulsa
+
+Texto profissional (sem undefined)
+
+Ações disponíveis:
+
+Baixar PDF
+
+Enviar via WhatsApp (wa.me com texto codificado)
+
+Copiar texto do recibo
+
+Detecção automática de telefone do aluno
+
+PDF com layout único e elegante
+
+4️⃣ Caixa
+
+Campo categoria nos lançamentos:
+
+mensalidade
+
+aula avulsa
+
+despesa
+
+outros
+
+Categoria salva no lançamento
+
+Categoria usada em filtros ou relatórios
+
+5️⃣ Relatório Mensal (contador)
+
+Seleção de mês/ano
+
+Resumo:
+
+Total de entradas
+
+Total de saídas
+
+Saldo do mês
+
+Detalhamento:
+
+Mensalidades
+
+Aulas avulsas
+
+Despesas
+
+Exclusão automática de lançamentos cancelados
+
+Opção de gerar PDF para contador
+
+6️⃣ Tema e Identidade Visual
+
+Alternância tema claro / escuro
+
+Persistência do tema no localStorage
+
+Uso da logo do Bailado Carioca:
+
+Nas telas principais
+
+Nos recibos
+
+Nos relatórios em PDF
+
+7️⃣ Lixeira
+
+Lixeira mostrando:
+
+Tipo da entidade (Aluno, Turma, Unidade, etc.)
+
+Data da exclusão
+
+Restaurar entidade mantendo integridade dos dados
+
+Exclusão definitiva funcional
+
+🧩 ENTREGA ESPERADA
+
+Ao final, gere:
+
+🔹 1. Tabela de Status
+
+Algo como:
+
+Funcionalidade	Status	Observação
+Email/CPF aluno	⚠️ Parcial	Salva, mas não exibe
+Card turma com alunos	❌	Ainda não implementado
+...	...	...
+🔹 2. Plano de Tarefas Incremental
+
+Organize em etapas claras, por exemplo:
+
+Fase 1 – Dados essenciais
+
+Ajustar modelo de aluno (email/CPF)
+
+Garantir compatibilidade com dados antigos
+
+Fase 2 – Visual e UX
+
+Cards de turma com alunos
+
+Contadores dinâmicos
+
+Fase 3 – Financeiro
+
+Categoria no Caixa
+
+Relatório mensal para contador
+
+Fase 4 – Identidade
+
+Tema claro/escuro
+
+Logo nos PDFs e telas
+
+Cada tarefa deve indicar:
+
+Onde mexer (arquivo / função)
+
+Impacto esperado
+
+Risco (baixo / médio / alto)
+
+🚫 O QUE NÃO FAZER
+
+Não implementar nada ainda
+
+Não refatorar código existente
+
+Não mudar estrutura sem necessidade
+
+✅ RESULTADO FINAL ESPERADO
+
+Uma análise clara do estado atual do sistema + um plano técnico seguro para seguir evoluindo o app sem regressões, pronto para uso real no dia a dia do Bailado Carioca.
