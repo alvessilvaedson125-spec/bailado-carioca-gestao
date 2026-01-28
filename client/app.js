@@ -127,8 +127,8 @@ const Auth = {
 
   // Paginas permitidas por perfil
   permissoes: {
-    admin: ["dashboard", "alunos", "bolsistas", "trancados", "turmas", "unidades", "professores", "mensalidades", "recibos", "caixa", "presenca", "relatorio", "lixeira", "config"],
-    operacional: ["alunos", "bolsistas", "presenca", "turmas", "unidades", "trancados"],
+    admin: ["dashboard", "alunos", "bolsistas", "trancados", "turmas", "unidades", "professores", "mensalidades", "recibos", "caixa", "presenca", "relatorio", "lixeira", "config", "manual"],
+    operacional: ["alunos", "bolsistas", "presenca", "turmas", "unidades", "trancados", "manual"],
   },
 
   // Paginas com dados financeiros (ocultar para operacional)
@@ -370,6 +370,7 @@ const UI = {
       ["relatorio", "Relatorio Mensal"],
       ["lixeira", "Lixeira"],
       ["config", "Configuracoes"],
+      ["manual", "Manual"],
     ];
 
     // Filtra paginas baseado no perfil do usuario
@@ -416,6 +417,7 @@ const UI = {
       relatorio: "Relatorio Mensal",
       lixeira: "Lixeira",
       config: "Configuracoes",
+      manual: "Manual de Uso",
     };
 
     this.title.textContent = titulos[page] || page;
@@ -1051,6 +1053,10 @@ const pagesRenderers = {
 
   config() {
     renderConfig();
+  },
+
+  manual() {
+    renderManual();
   },
 };
 
@@ -5196,6 +5202,181 @@ function importarDados(file, msgElement) {
   };
 
   reader.readAsText(file);
+}
+
+/* =========================
+   MANUAL DE USO
+========================= */
+
+/** Renderiza pagina do Manual de Uso */
+function renderManual() {
+  const container = document.createElement("div");
+  container.className = "manual-container";
+  container.innerHTML = `
+    <div class="summary-card" style="max-width: 900px;">
+      <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Manual de Uso - Bailado Carioca</h2>
+
+      <div class="manual-section">
+        <h3>1. Introducao</h3>
+        <p>O <strong>Sistema de Gestao do Bailado Carioca</strong> foi criado para facilitar o dia a dia da escola de danca. Com ele, voce pode:</p>
+        <ul>
+          <li>Cadastrar e gerenciar alunos</li>
+          <li>Controlar turmas e unidades</li>
+          <li>Registrar presenca</li>
+          <li>Gerenciar bolsistas</li>
+          <li>Controlar pagamentos e recibos</li>
+          <li>Acompanhar o fluxo de caixa</li>
+        </ul>
+        <p>Todos os dados ficam salvos no seu navegador. Nao precisa de internet para usar o sistema apos carrega-lo.</p>
+      </div>
+
+      <div class="manual-section">
+        <h3>2. Acesso ao Sistema</h3>
+        <h4>Tela de Abertura</h4>
+        <p>Ao abrir o sistema, voce vera a tela de boas-vindas com o botao <strong>"Entrar no Sistema"</strong>.</p>
+        
+        <h4>Login</h4>
+        <p>Digite seu usuario e senha para entrar. Se errar, uma mensagem de erro aparecera.</p>
+        
+        <h4>Perfis de Acesso</h4>
+        <ul>
+          <li><strong>Admin:</strong> Acesso total a todas as funcoes, incluindo financeiro</li>
+          <li><strong>Operacional:</strong> Acesso limitado a Alunos, Bolsistas, Presenca, Turmas, Unidades e Trancados</li>
+        </ul>
+        <p>Para alterar sua senha, acesse <strong>Configuracoes</strong> e use a secao "Seguranca".</p>
+      </div>
+
+      <div class="manual-section">
+        <h3>3. Cadastro de Alunos</h3>
+        <h4>Campos Obrigatorios</h4>
+        <ul>
+          <li>Nome completo</li>
+          <li>Telefone de contato</li>
+          <li>Turma</li>
+          <li>Unidade</li>
+        </ul>
+        
+        <h4>Campos Opcionais</h4>
+        <ul>
+          <li>Email</li>
+          <li>CPF</li>
+        </ul>
+        
+        <h4>Status do Aluno</h4>
+        <ul>
+          <li><strong>Ativo:</strong> Aluno regular, frequentando aulas</li>
+          <li><strong>Trancado:</strong> Aluno com matricula suspensa temporariamente</li>
+          <li><strong>Excluido:</strong> Aluno removido (vai para a Lixeira, pode ser restaurado)</li>
+        </ul>
+      </div>
+
+      <div class="manual-section">
+        <h3>4. Bolsistas</h3>
+        <h4>O que e um Bolsista?</h4>
+        <p>Bolsista e um aluno que recebe desconto total ou parcial na mensalidade.</p>
+        
+        <h4>Tipos de Bolsa</h4>
+        <ul>
+          <li><strong>Integral:</strong> 100% de desconto</li>
+          <li><strong>Parcial:</strong> Desconto parcial</li>
+          <li><strong>Apoio:</strong> Bolsa de apoio especial</li>
+        </ul>
+        
+        <h4>Como Conceder Bolsa</h4>
+        <ol>
+          <li>Acesse a pagina <strong>Bolsistas</strong></li>
+          <li>Clique em <strong>"Conceder Bolsa"</strong></li>
+          <li>Selecione o aluno e o tipo de bolsa</li>
+          <li>Adicione observacoes se necessario</li>
+        </ol>
+        
+        <h4>Impacto Financeiro</h4>
+        <p>Bolsistas <strong>nao aparecem</strong> na lista de mensalidades pendentes e nunca sao marcados como inadimplentes.</p>
+      </div>
+
+      <div class="manual-section">
+        <h3>5. Presenca</h3>
+        <h4>Registrar Presenca</h4>
+        <ol>
+          <li>Acesse a pagina <strong>Presenca</strong></li>
+          <li>Selecione a turma e a data</li>
+          <li>Para cada aluno, clique:
+            <ul>
+              <li><strong>[P]</strong> Presente</li>
+              <li><strong>[F]</strong> Falta</li>
+              <li><strong>[J]</strong> Justificada</li>
+            </ul>
+          </li>
+        </ol>
+        <p>Use os botoes "Marcar Todos Presentes" ou "Marcar Todos Falta" para agilizar.</p>
+        
+        <h4>Consultar Presenca</h4>
+        <p>Na aba <strong>Consultar</strong>, filtre por turma, aluno, mes ou ano para ver o historico.</p>
+        
+        <h4>Exportar Relatorios</h4>
+        <p>Apos consultar, use os botoes <strong>PDF</strong> ou <strong>WhatsApp</strong> para compartilhar.</p>
+      </div>
+
+      <div class="manual-section">
+        <h3>6. Financeiro (Somente Admin)</h3>
+        <p><em>Esta secao e visivel apenas para usuarios com perfil Admin.</em></p>
+        
+        <h4>Mensalidades</h4>
+        <p>Registre pagamentos de alunos. O sistema mostra quem esta com pagamento pendente.</p>
+        
+        <h4>Caixa</h4>
+        <p>Controle entradas e saidas de dinheiro. Categorias disponiveis:</p>
+        <ul>
+          <li>Mensalidade</li>
+          <li>Aula Avulsa</li>
+          <li>Despesa</li>
+          <li>Outros</li>
+        </ul>
+        
+        <h4>Recibos</h4>
+        <p>Gere recibos profissionais para os alunos. Pode exportar em PDF ou enviar via WhatsApp.</p>
+      </div>
+
+      <div class="manual-section">
+        <h3>7. Backup e Seguranca</h3>
+        <h4>Exportar Dados</h4>
+        <ol>
+          <li>Acesse <strong>Configuracoes</strong></li>
+          <li>Clique em <strong>"Exportar Dados"</strong></li>
+          <li>Um arquivo JSON sera baixado com todos os dados</li>
+        </ol>
+        
+        <h4>Importar Dados</h4>
+        <ol>
+          <li>Acesse <strong>Configuracoes</strong></li>
+          <li>Clique em <strong>"Importar Dados"</strong></li>
+          <li>Selecione um arquivo de backup</li>
+          <li>Confirme a importacao (os dados atuais serao substituidos)</li>
+        </ol>
+        
+        <h4>Alterar Senha</h4>
+        <p>Em <strong>Configuracoes > Seguranca</strong>, voce pode alterar sua senha a qualquer momento.</p>
+      </div>
+
+      <div class="manual-section">
+        <h3>8. Boas Praticas de Uso</h3>
+        <ul>
+          <li><strong>Faca backup regularmente:</strong> Exporte seus dados pelo menos uma vez por semana</li>
+          <li><strong>Evite exclusoes definitivas:</strong> Use o "Trancar" ao inves de excluir quando possivel</li>
+          <li><strong>Confira antes de salvar:</strong> Revise os dados antes de confirmar</li>
+          <li><strong>Mantenha senhas seguras:</strong> Nao compartilhe sua senha com outras pessoas</li>
+          <li><strong>Use a Lixeira:</strong> Itens excluidos podem ser restaurados pela Lixeira</li>
+        </ul>
+      </div>
+
+      <div class="manual-section" style="background: var(--color-info-bg); padding: 1rem; border-radius: 8px;">
+        <h4 style="margin-top: 0;">Precisa de Ajuda?</h4>
+        <p style="margin-bottom: 0;">Se tiver duvidas sobre o uso do sistema, consulte este manual ou entre em contato com o administrador.</p>
+      </div>
+    </div>
+  `;
+
+  UI.content.appendChild(container);
 }
 
 /* =========================

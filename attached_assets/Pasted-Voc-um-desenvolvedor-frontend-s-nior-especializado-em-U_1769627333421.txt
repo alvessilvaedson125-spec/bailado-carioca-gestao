@@ -1,0 +1,109 @@
+Você é um desenvolvedor frontend sênior, especializado em UX, documentação interna e aplicações em JavaScript puro.
+
+Estou desenvolvendo um sistema de gestão para a escola Bailado Carioca.
+O sistema é funcional, estável, possui login, controle de acesso e é usado diariamente.
+
+---
+
+## 🎯 OBJETIVO
+Criar um **Manual Interno de Uso**, embutido no sistema, que:
+- fique sempre acessível
+- não dependa de arquivos externos
+- permaneça disponível ao fechar e reabrir o sistema
+- sirva para uso diário por pessoas não técnicas
+
+---
+
+## ⚠️ REGRAS ABSOLUTAS
+- NÃO usar backend
+- NÃO usar bibliotecas externas
+- NÃO alterar funcionalidades existentes
+- NÃO impactar performance do sistema
+- JavaScript puro + HTML + CSS
+- Conteúdo deve ser apenas leitura (read-only)
+
+---
+
+## 🧭 LOCALIZAÇÃO
+Adicionar um novo item de menu:
+- Nome: “Manual” ou “Ajuda”
+
+---
+
+## 🖥️ FORMA DE EXIBIÇÃO
+O manual deve ser exibido como:
+- Página interna OU
+- Modal grande (fullscreen ou quase)
+
+Deve conter:
+- Título claro
+- Texto simples
+- Seções organizadas
+- Possibilidade de rolar o conteúdo
+
+---
+
+## 📚 CONTEÚDO DO MANUAL (OBRIGATÓRIO)
+
+O manual deve conter pelo menos estas seções:
+
+1. Introdução
+   - O que é o sistema
+   - Para que ele serve
+
+2. Acesso ao sistema
+   - Tela de abertura
+   - Login
+   - Perfis de acesso
+
+3. Cadastro de alunos
+   - Campos obrigatórios
+   - Campos opcionais
+   - Status do aluno
+
+4. Bolsistas
+   - O que é um bolsista
+   - Como conceder/remover bolsa
+   - Impacto financeiro (nenhum)
+
+5. Presença
+   - Registrar presença
+   - Consultar presença
+   - Exportar relatórios
+
+6. Financeiro (somente Admin)
+   - Mensalidades
+   - Caixa
+   - Recibos
+
+7. Backup e segurança
+   - Exportar dados
+   - Importar dados
+   - Boas práticas
+
+8. Boas práticas de uso
+   - Fazer backup regularmente
+   - Evitar exclusões definitivas
+   - Conferir dados antes de salvar
+
+---
+
+## 🧠 UX IMPORTANTE
+- Linguagem simples
+- Texto direto
+- Sem termos técnicos
+- Pensado para uso interno
+- Visual consistente com o sistema
+
+---
+
+## 🛠️ ENTREGA ESPERADA
+- Manual acessível via menu
+- Conteúdo sempre disponível
+- Nenhuma dependência externa
+- Código organizado e isolado
+- Zero impacto nas funcionalidades existentes
+
+🚨 IMPORTANTE:
+Este manual é parte do sistema.
+Ele deve existir sempre, mesmo após fechar e reabrir o app.

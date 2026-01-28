@@ -1301,6 +1301,60 @@ tbody tr:hover {
 }
 
 /* ======================================================
+   MANUAL DE USO
+====================================================== */
+.manual-container {
+  max-width: 100%;
+}
+
+.manual-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.manual-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.manual-section h3 {
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+}
+
+.manual-section h4 {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.5rem 0;
+}
+
+.manual-section p {
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0.5rem 0;
+}
+
+.manual-section ul,
+.manual-section ol {
+  color: var(--text-primary);
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  line-height: 1.8;
+}
+
+.manual-section li {
+  margin-bottom: 0.25rem;
+}
+
+.manual-section strong {
+  color: var(--text-primary);
+}
+
+/* ======================================================
    PRINT STYLES
 ====================================================== */
 @media print {
