@@ -1921,7 +1921,12 @@ function renderCardsTurmas(unidadeFiltro) {
   const grid = criarGridCards();
 
   turmas.forEach(turma => {
-    const professor = DataStore.findById("professores", turma.professor_id);
+    // Compatibilidade: pegar professores_ids ou migrar de professor_id
+    const professoresIds = turma.professores_ids || (turma.professor_id ? [turma.professor_id] : []);
+    const professoresNomes = professoresIds
+      .map(id => DataStore.findById("professores", id)?.nome)
+      .filter(Boolean)
+      .join(", ");
     const unidade = DataStore.findById("unidades", turma.unidade_id);
     const monitoresNomes = (turma.monitores_ids || [])
       .map(id => DataStore.findById("professores", id)?.nome)
@@ -1949,7 +1954,7 @@ function renderCardsTurmas(unidadeFiltro) {
         Nivel: ${turma.nivel}<br>
         Unidade: ${unidade?.nome || turma.unidade || "-"}<br>
         Horario: ${turma.horario || "-"}<br>
-        Professor: ${professor?.nome || "-"}<br>
+        Professores: ${professoresNomes || "-"}<br>
         Monitores: ${monitoresNomes || "-"}
       </p>
       <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e2e8f0;">
@@ -2055,17 +2060,17 @@ function abrirModalTurma(turmaExistente = null) {
       </div>
 
       <div class="field">
-        <label>Professor Responsável</label>
-        <select id="professor">
-          <option value="">Nenhum</option>
+        <label>Professores</label>
+        <select id="professores" multiple style="min-height: 70px;">
         </select>
+        <small>Ctrl+Click para multiplos</small>
       </div>
 
       <div class="field">
         <label>Monitores</label>
         <select id="monitores" multiple style="min-height: 70px;">
         </select>
-        <small>Ctrl+Click para múltiplos</small>
+        <small>Ctrl+Click para multiplos</small>
       </div>
     </div>
 
@@ -2089,16 +2094,18 @@ function abrirModalTurma(turmaExistente = null) {
       selectUnidade.appendChild(option);
     });
 
-  // Popular select de professores
-  const selectProfessor = modal.querySelector("#professor");
+  // Popular select de professores (multi-select)
+  const selectProfessores = modal.querySelector("#professores");
+  // Compatibilidade: pegar professores_ids ou migrar de professor_id
+  const professoresIds = turmaExistente?.professores_ids || (turmaExistente?.professor_id ? [turmaExistente.professor_id] : []);
   DataStore.state.data.professores
     .filter(p => p.ativo !== false && p.funcao === "Professor")
     .forEach(prof => {
       const option = document.createElement("option");
       option.value = prof.id;
       option.textContent = prof.nome;
-      if (turmaExistente?.professor_id === prof.id) option.selected = true;
-      selectProfessor.appendChild(option);
+      if (professoresIds.includes(prof.id)) option.selected = true;
+      selectProfessores.appendChild(option);
     });
 
   // Popular select de monitores
@@ -2127,6 +2134,7 @@ function abrirModalTurma(turmaExistente = null) {
     }
 
     const unidade = DataStore.findById("unidades", unidadeId);
+    const professoresSelecionados = Array.from(selectProfessores.selectedOptions).map(o => o.value);
     const monitoresSelecionados = Array.from(selectMonitores.selectedOptions).map(o => o.value);
 
     const diasSelecionados = [];
@@ -2148,7 +2156,7 @@ function abrirModalTurma(turmaExistente = null) {
       horario: diasSelecionados.length > 0 
         ? diasSelecionados.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(", ") + (horarioTempo ? ` ${horarioTempo}` : "")
         : horarioTempo,
-      professor_id: selectProfessor.value || null,
+      professores_ids: professoresSelecionados,
       monitores_ids: monitoresSelecionados,
     };
 
@@ -2360,7 +2368,12 @@ function renderCardsProfessores() {
 
   professores.forEach(prof => {
     const turmasVinculadas = DataStore.state.data.turmas
-      .filter(t => t.ativa !== false && (t.professor_id === prof.id || t.monitores_ids?.includes(prof.id)))
+      .filter(t => {
+        if (t.ativa === false) return false;
+        // Compatibilidade: verificar professores_ids ou professor_id antigo
+        const professoresIds = t.professores_ids || (t.professor_id ? [t.professor_id] : []);
+        return professoresIds.includes(prof.id) || t.monitores_ids?.includes(prof.id);
+      })
       .map(t => t.nome)
       .join(", ");
     
@@ -2433,7 +2446,12 @@ function abrirRelatorioPagamentosProfessores() {
   } else {
     professores.forEach(prof => {
       const turmas = DataStore.state.data.turmas
-        .filter(t => t.ativa !== false && (t.professor_id === prof.id || t.monitores_ids?.includes(prof.id)));
+        .filter(t => {
+          if (t.ativa === false) return false;
+          // Compatibilidade: verificar professores_ids ou professor_id antigo
+          const professoresIds = t.professores_ids || (t.professor_id ? [t.professor_id] : []);
+          return professoresIds.includes(prof.id) || t.monitores_ids?.includes(prof.id);
+        });
       
       let valorCalculado = 0;
       let detalhes = "";
