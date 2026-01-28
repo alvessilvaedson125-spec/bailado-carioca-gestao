@@ -1,5 +1,5 @@
 /* ======================================================
-   DESIGN TOKENS
+   DESIGN TOKENS - LIGHT MODE (DEFAULT)
 ====================================================== */
 :root {
   --color-primary: #2563eb;
@@ -24,6 +24,50 @@
   --shadow-sm: 0 4px 12px rgba(0,0,0,.05);
   --shadow-md: 0 10px 25px rgba(0,0,0,.08);
   --shadow-lg: 0 20px 60px rgba(0,0,0,.25);
+}
+
+/* ======================================================
+   DARK MODE
+====================================================== */
+body.dark-mode {
+  --color-bg: #0f172a;
+  --color-card: #1e293b;
+  --color-border: #334155;
+
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #94a3b8;
+
+  --shadow-sm: 0 4px 12px rgba(0,0,0,.3);
+  --shadow-md: 0 10px 25px rgba(0,0,0,.4);
+  --shadow-lg: 0 20px 60px rgba(0,0,0,.5);
+}
+
+body.dark-mode .top-bar {
+  background: var(--color-card);
+  border-color: var(--color-border);
+}
+
+body.dark-mode .modal-card {
+  background: var(--color-card);
+  color: var(--color-text-primary);
+}
+
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+  background: #0f172a;
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+body.dark-mode .btn-secondary {
+  background: #334155;
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+body.dark-mode .btn-secondary:hover {
+  background: #475569;
 }
 
 /* ======================================================

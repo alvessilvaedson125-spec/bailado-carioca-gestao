@@ -125,7 +125,37 @@ const UI = {
     DataStore.load();
     DataStore.migrateAlunosStatus();
     this.renderMenu();
+    this.initTheme();
     this.navigate("dashboard");
+  },
+
+  initTheme() {
+    const savedTheme = localStorage.getItem("bailadoTheme");
+    const themeToggle = document.getElementById("theme-toggle");
+    const themeIcon = document.getElementById("theme-icon");
+    const themeText = document.getElementById("theme-text");
+
+    const applyTheme = (isDark) => {
+      if (isDark) {
+        document.body.classList.add("dark-mode");
+        themeIcon.textContent = "[Claro]";
+        themeText.textContent = "Modo Claro";
+      } else {
+        document.body.classList.remove("dark-mode");
+        themeIcon.textContent = "[Escuro]";
+        themeText.textContent = "Modo Escuro";
+      }
+    };
+
+    if (savedTheme === "dark") {
+      applyTheme(true);
+    }
+
+    themeToggle.onclick = () => {
+      const isDark = document.body.classList.contains("dark-mode");
+      applyTheme(!isDark);
+      localStorage.setItem("bailadoTheme", isDark ? "light" : "dark");
+    };
   },
 
   renderMenu() {
@@ -247,25 +277,30 @@ function gerarNumeroRecibo() {
 /** Template do recibo - texto gerado dinamicamente */
 function gerarTextoRecibo(recibo) {
   const config = DataStore.state.data.config || {};
-  const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "N/A";
-  const descricao = recibo.descricaoServico || recibo.competencia || "servico";
-  const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "N/A";
+  const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "Não informado";
+  const telefoneAluno = recibo.telefoneAluno || recibo.telefone || "Não informado";
+  const descricao = recibo.descricaoServico || recibo.competencia || "serviço prestado";
+  const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "Não informado";
   const nomeRecebedor = config.nomeRecebedor || "Edson Silva";
-  const cnpj = config.cnpj || "";
+  const cnpj = config.cnpj || "Não informado";
   const nomeProjeto = config.nomeProjeto || "Bailado Carioca";
   
-  return `RECIBO
+  return `RECIBO Nº ${recibo.numero || "S/N"}
 
-Recebi de ${nomeAluno} a quantia de ${formatarReais(recibo.valor)},
+Confirmo o recebimento de ${formatarReais(recibo.valor)},
 referente a ${descricao}.
+
+Aluno: ${nomeAluno}
+Telefone: ${telefoneAluno}
 
 Forma de pagamento: ${formaPgto}
 Data do pagamento: ${formatarData(recibo.data)}
 
-Declaro que o valor acima foi recebido e dou plena quitacao.
+Declaro que o valor acima foi recebido e dou plena quitação.
 
 Recebedor:
-${nomeRecebedor}${cnpj ? `\nCNPJ: ${cnpj}` : ""}
+${nomeRecebedor}
+CNPJ: ${cnpj}
 
 ${nomeProjeto}`;
 }
@@ -294,11 +329,12 @@ function gerarLinkWhatsApp(telefone, texto) {
 function gerarPDFRecibo(recibo) {
   const config = DataStore.state.data.config || {};
   const dataGeracao = new Date().toLocaleString("pt-BR");
-  const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "N/A";
-  const descricao = recibo.descricaoServico || recibo.competencia || "servico";
-  const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "N/A";
+  const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "Não informado";
+  const telefoneAluno = recibo.telefoneAluno || recibo.telefone || "Não informado";
+  const descricao = recibo.descricaoServico || recibo.competencia || "serviço prestado";
+  const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "Não informado";
   const nomeRecebedor = config.nomeRecebedor || "Edson Silva";
-  const cnpj = config.cnpj || "";
+  const cnpj = config.cnpj || "Não informado";
   const nomeProjeto = config.nomeProjeto || "Bailado Carioca";
   
   const htmlContent = `
@@ -306,7 +342,7 @@ function gerarPDFRecibo(recibo) {
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>Recibo #${recibo.numero}</title>
+      <title>Recibo #${recibo.numero || "S-N"}</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -374,21 +410,23 @@ function gerarPDFRecibo(recibo) {
     <body>
       <div class="header">
         <h1>RECIBO</h1>
-        <div class="numero">N ${recibo.numero}</div>
+        <div class="numero">Nº ${recibo.numero || "S/N"}</div>
       </div>
       <div class="body">
-        <p>Recebi de <strong>${nomeAluno}</strong> a quantia de <strong>${formatarReais(recibo.valor)}</strong>, referente a ${descricao}.</p>
+        <p>Confirmo o recebimento de <strong>${formatarReais(recibo.valor)}</strong>, referente a ${descricao}.</p>
+        <p><strong>Aluno:</strong> ${nomeAluno}</p>
+        <p><strong>Telefone:</strong> ${telefoneAluno}</p>
         <p><strong>Forma de pagamento:</strong> ${formaPgto}</p>
         <p><strong>Data do pagamento:</strong> ${formatarData(recibo.data)}</p>
-        <p>Declaro que o valor acima foi recebido e dou plena quitacao.</p>
+        <p style="margin-top: 30px;">Declaro que o valor acima foi recebido e dou plena quitação.</p>
       </div>
       <div class="recebedor">
         <div>Recebedor:</div>
         <div class="nome">${nomeRecebedor}</div>
-        ${cnpj ? `<div class="cnpj">CNPJ: ${cnpj}</div>` : ""}
+        <div class="cnpj">CNPJ: ${cnpj}</div>
       </div>
       <div class="assinatura">${nomeProjeto}</div>
-      <div class="footer">Gerado em ${dataGeracao}</div>
+      <div class="footer">Gerado em ${dataGeracao}<br>Documento gerado pelo Sistema Bailado Carioca</div>
     </body>
     </html>
   `;
@@ -2597,7 +2635,9 @@ function gerarRelatorioMensal(mes, ano) {
   container.innerHTML = "";
 
   const caixa = DataStore.state.data.caixa;
+  // Filtrar por mês/ano E excluir cancelados
   const movimentosMes = caixa.filter(mov => {
+    if (mov.status === "cancelado") return false;
     const data = new Date(mov.data);
     return data.getMonth() + 1 === mes && data.getFullYear() === ano;
   });
@@ -2608,9 +2648,22 @@ function gerarRelatorioMensal(mes, ano) {
   const totalSaidas = saidas.reduce((sum, m) => sum + (m.valor || 0), 0);
   const saldo = totalEntradas - totalSaidas;
 
-  const mensalidadesEntradas = entradas.filter(m => m.descricao && m.descricao.toLowerCase().includes("mensalidade"));
-  const aulasAvulsas = entradas.filter(m => m.descricao && m.descricao.toLowerCase().includes("aula avulsa"));
-  const outrasEntradas = entradas.filter(m => !m.descricao || (!m.descricao.toLowerCase().includes("mensalidade") && !m.descricao.toLowerCase().includes("aula avulsa")));
+  // Usar categoria se disponível, senão fallback para descrição
+  const mensalidadesEntradas = entradas.filter(m => 
+    m.categoria === "mensalidade" || 
+    (m.descricao && m.descricao.toLowerCase().includes("mensalidade"))
+  );
+  const aulasAvulsas = entradas.filter(m => 
+    m.categoria === "aula_avulsa" || 
+    (m.descricao && m.descricao.toLowerCase().includes("aula avulsa"))
+  );
+  const outrasEntradas = entradas.filter(m => 
+    m.categoria === "outros" || 
+    (!m.categoria && !m.descricao) || 
+    (m.categoria !== "mensalidade" && m.categoria !== "aula_avulsa" && 
+     !m.descricao?.toLowerCase().includes("mensalidade") && 
+     !m.descricao?.toLowerCase().includes("aula avulsa"))
+  );
 
   const meses = ["","Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
@@ -2834,10 +2887,15 @@ function renderLixeira() {
     btnRestaurar.className = "btn-primary";
     btnRestaurar.textContent = "Restaurar";
     btnRestaurar.onclick = () => {
-      aluno.status = "ativo";
-      delete aluno.dataExclusao;
-      DataStore.save();
-      UI.navigate("lixeira");
+      const turma = DataStore.findById("turmas", aluno.turma);
+      const turmaInfo = turma ? ` para a turma "${turma.nome}"` : "";
+      
+      if (confirm(`Restaurar aluno "${aluno.nome}"${turmaInfo}?\n\nO aluno voltará ao status ativo.`)) {
+        aluno.status = "ativo";
+        delete aluno.dataExclusao;
+        DataStore.save();
+        UI.navigate("lixeira");
+      }
     };
     acoes.appendChild(btnRestaurar);
 

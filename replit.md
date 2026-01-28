@@ -10,80 +10,66 @@ This is a management system for a dance school (Bailado Carioca) built as a **pu
 - **NO frameworks** (React, Vue, Next.js explicitly excluded)
 - Card-based UI design
 - Do NOT invent features or generate sample data
+- **NO emojis** anywhere in the application
 
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework**: React 18 with TypeScript
-- **Routing**: Wouter for client-side routing
-- **State Management**: TanStack React Query for server state, with a centralized DataStore pattern using localStorage for offline-capable data
-- **UI Components**: shadcn/ui component library built on Radix UI primitives
-- **Styling**: Tailwind CSS with custom CSS variables for theming
-- **Build Tool**: Vite with custom plugins for Replit integration
-
-### Backend Architecture
-- **Framework**: Express.js 5.x with TypeScript
-- **API Design**: RESTful API with routes prefixed with `/api`
-- **Server**: HTTP server created separately to support potential WebSocket upgrades
-- **Static Serving**: Production serves built client assets from `dist/public`
+- **Framework**: Pure vanilla JavaScript (NO React, Vue, or any framework)
+- **Routing**: Custom hash-based routing via UI.navigate()
+- **State Management**: Centralized DataStore pattern with localStorage persistence
+- **UI Components**: Custom card-based components rendered via DOM manipulation
+- **Styling**: Custom CSS with CSS variables for theming (dark/light mode)
 
 ### Data Layer
-- **ORM**: Drizzle ORM with PostgreSQL dialect
-- **Schema Location**: `shared/schema.ts` - shared between client and server
-- **Validation**: Zod schemas generated from Drizzle schemas via `drizzle-zod`
-- **Migrations**: Managed via `drizzle-kit push` command
-- **Storage Interface**: Abstract `IStorage` interface in `server/storage.ts` allowing for different storage backends (currently in-memory, designed for PostgreSQL)
+- **Storage**: localStorage with JSON serialization
+- **Key**: "bailadoCariocaData" stores all application data
+- **Theme**: "bailadoTheme" stores theme preference (light/dark)
 
 ### Project Structure
 ```
-├── client/           # Frontend React application
-│   ├── src/          # React components, hooks, and pages
-│   ├── index.html    # Entry HTML (also has legacy vanilla JS files)
-│   └── *.js          # Legacy vanilla JS files (app.js, UI.js, style.css)
-├── server/           # Express backend
-│   ├── index.ts      # Server entry point
-│   ├── routes.ts     # API route definitions
-│   ├── storage.ts    # Data storage interface
-│   └── vite.ts       # Vite dev server integration
-├── shared/           # Shared code between client and server
-│   └── schema.ts     # Drizzle database schema
-└── migrations/       # Database migrations (generated)
+client/
+├── index.html    # Main HTML file with sidebar structure
+├── app.js        # All application logic (DataStore, UI, modules)
+└── style.css     # All styling with CSS variables for theming
 ```
 
-### Development vs Production
-- **Development**: Vite dev server with HMR, proxied through Express
-- **Production**: Client built to `dist/public`, server bundled with esbuild to `dist/index.cjs`
-
 ### Key Design Patterns
-1. **Soft Delete**: Entities use `ativo`/`ativa` boolean or `status` field for soft deletion
-2. **Shared Types**: Database schemas in `shared/` directory ensure type safety across stack
-3. **Component Library**: Extensive shadcn/ui component library pre-configured with consistent styling
+1. **Soft Delete**: Students use `status` field (ativo/trancado/excluido), other entities use `ativo`/`ativa` boolean
+2. **DataStore Pattern**: Centralized state management with auto-save to localStorage
+3. **Modal System**: Reusable modal pattern for forms and dialogs
+4. **Card-based UI**: All data displayed in summary cards with consistent styling
 
-## External Dependencies
+## Modules
 
-### Database
-- **PostgreSQL**: Primary database (requires `DATABASE_URL` environment variable)
-- **Drizzle ORM**: Database toolkit for TypeScript
-- **connect-pg-simple**: PostgreSQL session store for Express sessions
+1. **Dashboard**: Overview with summary statistics
+2. **Alunos (Students)**: Student management with fields: nome, telefone, email, cpf, turma, unidade, tipoMatricula, mensalidade
+3. **Trancados (Suspended)**: View and manage suspended students
+4. **Turmas (Classes)**: Class management showing enrolled students
+5. **Unidades (Units)**: Location/unit management
+6. **Professores (Teachers)**: Teacher and monitor registration
+7. **Mensalidades (Tuition)**: Payment tracking and receipts
+8. **Recibos (Receipts)**: Professional receipt generation (text, PDF, WhatsApp)
+9. **Caixa (Cash Flow)**: Financial entries with categoria (mensalidade, aula_avulsa, despesa, outros)
+10. **Relatorio Mensal**: Monthly financial report with PDF/print export
+11. **Lixeira (Trash)**: View and restore deleted items
+12. **Configuracoes (Settings)**: Data import/export and preferences
 
-### UI Libraries
-- **Radix UI**: Headless UI primitives (dialog, dropdown, tabs, etc.)
-- **Tailwind CSS**: Utility-first CSS framework
-- **Lucide React**: Icon library
-- **class-variance-authority**: Component variant management
-- **embla-carousel-react**: Carousel component
-- **recharts**: Charting library
-- **react-day-picker**: Date picker component
-- **vaul**: Drawer component
-- **cmdk**: Command palette component
+## Recent Changes (Version 3)
 
-### Form & Validation
-- **react-hook-form**: Form state management
-- **@hookform/resolvers**: Form validation resolvers
-- **zod**: Schema validation
+- Added optional email and CPF fields to student registration
+- Added categoria field to Caixa entries for better classification
+- Professional receipt template with phone, proper formatting, "Nao informado" fallbacks
+- Monthly report excludes cancelled entries (status === "cancelado")
+- Dark/light theme toggle with localStorage persistence
+- Improved Lixeira with confirmation when restoring students
+- Fixed all undefined values in receipts (PDF title, text, WhatsApp)
+- Text-based theme toggle icons (no emojis)
 
-### Development Tools
-- **Vite**: Build tool and dev server
-- **esbuild**: Production bundler for server
-- **TypeScript**: Type checking
-- **Replit Plugins**: Runtime error overlay, cartographer, dev banner
+## Theme System
+
+The application supports dark/light mode:
+- Toggle button in sidebar bottom
+- CSS variables for seamless color switching
+- Preference persisted to localStorage key "bailadoTheme"
+- Body class "dark-mode" controls theme
