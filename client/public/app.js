@@ -1954,8 +1954,8 @@ function renderCardsTurmas(unidadeFiltro) {
         Nivel: ${turma.nivel}<br>
         Unidade: ${unidade?.nome || turma.unidade || "-"}<br>
         Horario: ${turma.horario || "-"}<br>
-        Professores: ${professoresNomes || "-"}<br>
-        Monitores: ${monitoresNomes || "-"}
+        Professores: ${professoresNomes || "Sem professores vinculados"}<br>
+        Monitores: ${monitoresNomes || "Sem monitores vinculados"}
       </p>
       <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e2e8f0;">
         <strong style="font-size: 0.9rem;">Alunos Matriculados (${alunosMatriculados.length}):</strong>
@@ -2059,18 +2059,28 @@ function abrirModalTurma(turmaExistente = null) {
         <input id="horario" placeholder="Ex: 19:00 - 20:30" value="${turmaExistente?.horarioTempo || turmaExistente?.horario || ""}">
       </div>
 
-      <div class="field">
+      <div class="field" style="grid-column: span 2;">
         <label>Professores</label>
-        <select id="professores" multiple style="min-height: 70px;">
-        </select>
-        <small>Ctrl+Click para multiplos</small>
+        <div id="professores-chips" data-testid="container-professores-chips" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; min-height: 32px; padding: 0.5rem; background: var(--bg-card, #fff); border: 1px solid #e2e8f0; border-radius: 4px;"></div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <select id="professores-select" data-testid="select-professores" style="flex: 1;">
+            <option value="">Adicionar professor...</option>
+          </select>
+          <button type="button" id="btn-add-professor" data-testid="button-add-professor" class="btn-secondary" style="white-space: nowrap;">Adicionar</button>
+          <button type="button" id="btn-clear-professores" data-testid="button-clear-professores" class="btn-secondary" style="white-space: nowrap;">Limpar Todos</button>
+        </div>
       </div>
 
-      <div class="field">
+      <div class="field" style="grid-column: span 2;">
         <label>Monitores</label>
-        <select id="monitores" multiple style="min-height: 70px;">
-        </select>
-        <small>Ctrl+Click para multiplos</small>
+        <div id="monitores-chips" data-testid="container-monitores-chips" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; min-height: 32px; padding: 0.5rem; background: var(--bg-card, #fff); border: 1px solid #e2e8f0; border-radius: 4px;"></div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <select id="monitores-select" data-testid="select-monitores" style="flex: 1;">
+            <option value="">Adicionar monitor...</option>
+          </select>
+          <button type="button" id="btn-add-monitor" data-testid="button-add-monitor" class="btn-secondary" style="white-space: nowrap;">Adicionar</button>
+          <button type="button" id="btn-clear-monitores" data-testid="button-clear-monitores" class="btn-secondary" style="white-space: nowrap;">Limpar Todos</button>
+        </div>
       </div>
     </div>
 
@@ -2094,31 +2104,128 @@ function abrirModalTurma(turmaExistente = null) {
       selectUnidade.appendChild(option);
     });
 
-  // Popular select de professores (multi-select)
-  const selectProfessores = modal.querySelector("#professores");
+  // Sistema de chips para professores
+  const professoresChipsContainer = modal.querySelector("#professores-chips");
+  const selectProfessoresDropdown = modal.querySelector("#professores-select");
+  const btnAddProfessor = modal.querySelector("#btn-add-professor");
+  const btnClearProfessores = modal.querySelector("#btn-clear-professores");
+  
   // Compatibilidade: pegar professores_ids ou migrar de professor_id
-  const professoresIds = turmaExistente?.professores_ids || (turmaExistente?.professor_id ? [turmaExistente.professor_id] : []);
-  DataStore.state.data.professores
-    .filter(p => p.ativo !== false && p.funcao === "Professor")
-    .forEach(prof => {
+  let professoresSelecionadosIds = turmaExistente?.professores_ids?.slice() || (turmaExistente?.professor_id ? [turmaExistente.professor_id] : []);
+  
+  const todosProfessores = DataStore.state.data.professores.filter(p => p.ativo !== false && p.funcao === "Professor");
+  
+  function renderProfessoresChips() {
+    professoresChipsContainer.innerHTML = "";
+    if (professoresSelecionadosIds.length === 0) {
+      professoresChipsContainer.innerHTML = '<span style="color: #94a3b8; font-size: 0.85rem;">Nenhum professor vinculado</span>';
+    } else {
+      professoresSelecionadosIds.forEach(id => {
+        const prof = DataStore.findById("professores", id);
+        if (prof) {
+          const chip = document.createElement("span");
+          chip.style.cssText = "display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.5rem; background: #dbeafe; color: #1d4ed8; border-radius: 4px; font-size: 0.85rem;";
+          chip.setAttribute("data-testid", `chip-professor-${id}`);
+          chip.innerHTML = `${prof.nome} <button type="button" data-id="${id}" data-testid="button-remove-professor-${id}" style="background: none; border: none; cursor: pointer; color: #1d4ed8; font-weight: bold; padding: 0 2px;">X</button>`;
+          chip.querySelector("button").onclick = () => {
+            professoresSelecionadosIds = professoresSelecionadosIds.filter(pid => pid !== id);
+            renderProfessoresChips();
+            atualizarDropdownProfessores();
+          };
+          professoresChipsContainer.appendChild(chip);
+        }
+      });
+    }
+  }
+  
+  function atualizarDropdownProfessores() {
+    selectProfessoresDropdown.innerHTML = '<option value="">Adicionar professor...</option>';
+    todosProfessores.filter(p => !professoresSelecionadosIds.includes(p.id)).forEach(prof => {
       const option = document.createElement("option");
       option.value = prof.id;
       option.textContent = prof.nome;
-      if (professoresIds.includes(prof.id)) option.selected = true;
-      selectProfessores.appendChild(option);
+      selectProfessoresDropdown.appendChild(option);
     });
+  }
+  
+  btnAddProfessor.onclick = () => {
+    const id = selectProfessoresDropdown.value;
+    if (id && !professoresSelecionadosIds.includes(id)) {
+      professoresSelecionadosIds.push(id);
+      renderProfessoresChips();
+      atualizarDropdownProfessores();
+    }
+  };
+  
+  btnClearProfessores.onclick = () => {
+    professoresSelecionadosIds = [];
+    renderProfessoresChips();
+    atualizarDropdownProfessores();
+  };
+  
+  renderProfessoresChips();
+  atualizarDropdownProfessores();
 
-  // Popular select de monitores
-  const selectMonitores = modal.querySelector("#monitores");
-  DataStore.state.data.professores
-    .filter(p => p.ativo !== false && p.funcao === "Monitor")
-    .forEach(mon => {
+  // Sistema de chips para monitores
+  const monitoresChipsContainer = modal.querySelector("#monitores-chips");
+  const selectMonitoresDropdown = modal.querySelector("#monitores-select");
+  const btnAddMonitor = modal.querySelector("#btn-add-monitor");
+  const btnClearMonitores = modal.querySelector("#btn-clear-monitores");
+  
+  let monitoresSelecionadosIds = turmaExistente?.monitores_ids?.slice() || [];
+  
+  const todosMonitores = DataStore.state.data.professores.filter(p => p.ativo !== false && p.funcao === "Monitor");
+  
+  function renderMonitoresChips() {
+    monitoresChipsContainer.innerHTML = "";
+    if (monitoresSelecionadosIds.length === 0) {
+      monitoresChipsContainer.innerHTML = '<span style="color: #94a3b8; font-size: 0.85rem;">Nenhum monitor vinculado</span>';
+    } else {
+      monitoresSelecionadosIds.forEach(id => {
+        const mon = DataStore.findById("professores", id);
+        if (mon) {
+          const chip = document.createElement("span");
+          chip.style.cssText = "display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.5rem; background: #fef9c3; color: #a16207; border-radius: 4px; font-size: 0.85rem;";
+          chip.setAttribute("data-testid", `chip-monitor-${id}`);
+          chip.innerHTML = `${mon.nome} <button type="button" data-id="${id}" data-testid="button-remove-monitor-${id}" style="background: none; border: none; cursor: pointer; color: #a16207; font-weight: bold; padding: 0 2px;">X</button>`;
+          chip.querySelector("button").onclick = () => {
+            monitoresSelecionadosIds = monitoresSelecionadosIds.filter(mid => mid !== id);
+            renderMonitoresChips();
+            atualizarDropdownMonitores();
+          };
+          monitoresChipsContainer.appendChild(chip);
+        }
+      });
+    }
+  }
+  
+  function atualizarDropdownMonitores() {
+    selectMonitoresDropdown.innerHTML = '<option value="">Adicionar monitor...</option>';
+    todosMonitores.filter(m => !monitoresSelecionadosIds.includes(m.id)).forEach(mon => {
       const option = document.createElement("option");
       option.value = mon.id;
       option.textContent = mon.nome;
-      if (turmaExistente?.monitores_ids?.includes(mon.id)) option.selected = true;
-      selectMonitores.appendChild(option);
+      selectMonitoresDropdown.appendChild(option);
     });
+  }
+  
+  btnAddMonitor.onclick = () => {
+    const id = selectMonitoresDropdown.value;
+    if (id && !monitoresSelecionadosIds.includes(id)) {
+      monitoresSelecionadosIds.push(id);
+      renderMonitoresChips();
+      atualizarDropdownMonitores();
+    }
+  };
+  
+  btnClearMonitores.onclick = () => {
+    monitoresSelecionadosIds = [];
+    renderMonitoresChips();
+    atualizarDropdownMonitores();
+  };
+  
+  renderMonitoresChips();
+  atualizarDropdownMonitores();
 
   modal.querySelector(".modal-btn-primary").onclick = () => {
     const nome = modal.querySelector("#nome").value;
@@ -2134,8 +2241,6 @@ function abrirModalTurma(turmaExistente = null) {
     }
 
     const unidade = DataStore.findById("unidades", unidadeId);
-    const professoresSelecionados = Array.from(selectProfessores.selectedOptions).map(o => o.value);
-    const monitoresSelecionados = Array.from(selectMonitores.selectedOptions).map(o => o.value);
 
     const diasSelecionados = [];
     ["seg", "ter", "qua", "qui", "sex", "sab", "dom"].forEach(dia => {
@@ -2156,8 +2261,8 @@ function abrirModalTurma(turmaExistente = null) {
       horario: diasSelecionados.length > 0 
         ? diasSelecionados.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(", ") + (horarioTempo ? ` ${horarioTempo}` : "")
         : horarioTempo,
-      professores_ids: professoresSelecionados,
-      monitores_ids: monitoresSelecionados,
+      professores_ids: professoresSelecionadosIds,
+      monitores_ids: monitoresSelecionadosIds,
     };
 
     if (isEdicao) {
