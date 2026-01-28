@@ -1,0 +1,135 @@
+Você é um desenvolvedor frontend sênior, especializado em sistemas de gestão educacional em JavaScript puro, com foco em simplicidade, rastreabilidade e justiça operacional.
+
+Estou desenvolvendo um sistema de gestão para uma escola de dança chamada “Bailado Carioca”.
+O sistema é estável, funcional e já possui layout, UX/UI e responsividade finalizados.
+
+Este é um NOVO CICLO FUNCIONAL.
+A partir daqui, podem ser adicionadas novas funcionalidades, desde que sejam incrementais, seguras e não quebrem nada existente.
+
+⚠️ REGRAS ABSOLUTAS:
+- NÃO refatore código existente
+- NÃO altere funcionalidades já prontas
+- NÃO modifique fluxos atuais
+- NÃO altere estrutura de dados existente
+- NÃO renomeie funções, variáveis ou chaves já usadas
+- NÃO introduza frameworks ou bibliotecas novas
+- JavaScript puro + localStorage
+- Layout atual deve ser respeitado e reutilizado
+
+---
+
+## 🎯 OBJETIVO DA FEATURE
+Implementar um **sistema de presença de alunos** que seja:
+- simples de usar em aula
+- rastreável (data, aula, aluno)
+- justo para controle de bolsistas e frequência
+- integrado ao sistema atual
+
+---
+
+## 🧱 MODELAGEM OBRIGATÓRIA (ENTIDADE PRÓPRIA)
+
+Criar uma nova entidade no DataStore chamada:
+
+presencas: []
+
+Cada registro de presença deve conter, no mínimo:
+- id (único)
+- aluno_id
+- turma_id
+- data (YYYY-MM-DD)
+- status: "presente" | "falta" | "justificada"
+- tipo: "regular" | "bolsista" | "aula_avulsa" | "reposicao"
+- createdAt
+
+📌 NÃO duplicar dados do aluno ou da turma.
+📌 Usar apenas IDs para vínculo.
+
+---
+
+## 🧠 REGRAS FUNCIONAIS IMPORTANTES
+
+- Presença é registrada **por aula (data + turma)**
+- Um aluno só pode ter **1 presença por aula**
+- Presença NÃO altera financeiro automaticamente
+- Presença NÃO altera status do aluno
+- Presença é apenas registro e base para relatórios
+- Alunos trancados ou excluídos NÃO aparecem para marcar presença
+
+---
+
+## 🖥️ UX DE REGISTRO (ESSENCIAL)
+
+Criar uma tela ou seção chamada **“Presença”**, com:
+
+### Fluxo principal:
+1. Selecionar Turma
+2. Selecionar Data (default = hoje)
+3. Listar alunos ativos da turma
+4. Para cada aluno:
+   - botão rápido: Presente / Falta
+   - opção Falta Justificada (opcional)
+
+📌 UX deve ser rápido, com poucos cliques.
+📌 Pensado para uso durante a aula.
+
+---
+
+## 🔍 FILTROS E CONSULTAS (OBRIGATÓRIO)
+
+Criar visualização de presença com filtros:
+- Turma
+- Aluno
+- Mês
+- Ano
+- Tipo (regular, bolsista, avulsa)
+
+Resultados devem permitir:
+- contagem de presenças
+- contagem de faltas
+- visão por período
+
+---
+
+## 🎓 BOLSISTAS (SEM REGRAS AUTOMÁTICAS)
+
+- Bolsista é definido pelo tipo de matrícula já existente
+- Presença apenas registra dados
+- NÃO aplicar punições automáticas
+- Relatórios servirão como base de decisão humana
+
+---
+
+## 📄 RELATÓRIOS E COMPARTILHAMENTO
+
+Permitir:
+- Visualização mensal de presença
+- Relatório por aluno
+- Relatório por turma
+- Geração de PDF simples
+- Compartilhamento via WhatsApp (link ou PDF)
+
+---
+
+## 🧩 INTEGRAÇÕES OBRIGATÓRIAS
+
+- Presença deve aparecer no histórico do aluno
+  Exemplo: “Presença registrada – Turma X – 12/03/2026”
+- NÃO impactar Caixa, Mensalidades ou Recibos
+
+---
+
+## 🛠️ ENTREGA ESPERADA
+
+- Código incremental
+- Nova entidade bem isolada
+- UX simples e clara
+- Sem impacto em funcionalidades existentes
+- Comentários claros explicando apenas o necessário
+
+🚨 IMPORTANTE:
+Se algo do sistema atual já atende visual ou estruturalmente, reutilize.
+Evite duplicação de componentes.
+Esta feature deve se encaixar naturalmente no app.
+
+Comece propondo a estrutura de dados e o fluxo de telas antes de implementar o código.
