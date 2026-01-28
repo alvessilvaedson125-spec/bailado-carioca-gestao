@@ -409,7 +409,7 @@ function gerarPDFRecibo(recibo) {
     </head>
     <body>
       <div class="header">
-        <img src="${window.location.origin}/logo-icon.jpg" alt="Bailado Carioca" style="width: 60px; height: auto; margin-bottom: 10px;">
+        <img src="${window.location.origin}/logo.jpg" alt="Bailado Carioca" style="width: 120px; height: auto; margin-bottom: 10px;">
         <h1>RECIBO</h1>
         <div class="numero">Nº ${recibo.numero || "S/N"}</div>
       </div>
@@ -2794,7 +2794,7 @@ function gerarPDFRelatorio(mes, ano, totalEntradas, totalSaidas, saldo, mensalid
     </head>
     <body>
       <div class="header">
-        <img src="${window.location.origin}/logo-icon.jpg" alt="Bailado Carioca" style="width: 60px; height: auto; margin-bottom: 10px;">
+        <img src="${window.location.origin}/logo.jpg" alt="Bailado Carioca" style="width: 120px; height: auto; margin-bottom: 10px;">
         <h1>${nomeProjeto}</h1>
         <h2>Relatorio Mensal - ${meses[mes]} ${ano}</h2>
       </div>
