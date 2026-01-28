@@ -1243,13 +1243,103 @@ function isBolsista(aluno) {
 function renderBolsistas() {
   const turmas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
   
-  // Header com filtros
+  // ========== AREA DE GESTAO (novo padrao similar a Turmas) ==========
+  const gestaoArea = document.createElement("div");
+  gestaoArea.className = "summary-card";
+  gestaoArea.style.marginBottom = "1.5rem";
+  gestaoArea.innerHTML = `
+    <div style="margin-bottom: 1rem;">
+      <strong style="font-size: 1.1rem;">Gestao de Bolsas</strong>
+      <p style="color: var(--color-text-secondary); margin-top: 0.25rem; font-size: 0.9rem;">Adicione ou remova bolsas diretamente</p>
+    </div>
+    
+    <div style="margin-bottom: 1rem;">
+      <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Bolsistas Atuais</label>
+      <div id="bolsistas-chips" data-testid="container-bolsistas-chips" style="display: flex; flex-wrap: wrap; gap: 0.5rem; min-height: 40px; padding: 0.75rem; background: var(--bg-card, #fff); border: 1px solid #e2e8f0; border-radius: 4px;"></div>
+    </div>
+    
+    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+      <select id="bolsista-busca" data-testid="select-add-bolsista" style="flex: 1; min-width: 200px; padding: 0.5rem;">
+        <option value="">Buscar aluno para conceder bolsa...</option>
+      </select>
+      <select id="bolsista-tipo-rapido" data-testid="select-tipo-bolsa-rapido" style="padding: 0.5rem; min-width: 120px;">
+        <option value="integral">Integral</option>
+        <option value="parcial">Parcial</option>
+        <option value="apoio">Apoio</option>
+      </select>
+      <button type="button" id="btn-add-bolsista" data-testid="button-add-bolsista" class="btn-primary" style="white-space: nowrap;">Conceder</button>
+      <button type="button" id="btn-clear-bolsistas" data-testid="button-clear-all-bolsistas" class="btn-secondary" style="white-space: nowrap; color: #dc2626;">Remover Todas</button>
+    </div>
+  `;
+  UI.content.appendChild(gestaoArea);
+  
+  // Preencher dropdown de alunos disponiveis
+  atualizarDropdownBolsistas();
+  renderBolsistasChips();
+  
+  // Event listeners para gestao
+  document.getElementById("btn-add-bolsista").onclick = () => {
+    const selectAluno = document.getElementById("bolsista-busca");
+    const alunoId = selectAluno.value;
+    const tipo = document.getElementById("bolsista-tipo-rapido").value;
+    
+    if (!alunoId) {
+      alert("Selecione um aluno!");
+      return;
+    }
+    
+    const aluno = DataStore.findById("alunos", alunoId);
+    if (!aluno) return;
+    
+    // Conceder bolsa
+    aluno.bolsa = {
+      ativa: true,
+      tipo: tipo,
+      observacao: "",
+      concedidaEm: new Date().toISOString()
+    };
+    aluno.tipoMatricula = "bolsista";
+    DataStore.save();
+    
+    adicionarEventoAluno(alunoId, `Bolsa concedida - Tipo: ${formatarTipoBolsa(tipo)}`);
+    
+    atualizarDropdownBolsistas();
+    renderBolsistasChips();
+    renderCardsBolsistas();
+  };
+  
+  document.getElementById("btn-clear-bolsistas").onclick = () => {
+    const bolsistas = DataStore.state.data.alunos.filter(a => isBolsista(a));
+    if (bolsistas.length === 0) {
+      alert("Nao ha bolsistas para remover.");
+      return;
+    }
+    
+    if (!confirm(`Remover TODAS as ${bolsistas.length} bolsa(s)?\n\nOs alunos continuarao cadastrados, apenas perderao a bolsa.`)) {
+      return;
+    }
+    
+    bolsistas.forEach(aluno => {
+      aluno.bolsa = { ativa: false, removidaEm: new Date().toISOString() };
+      aluno.tipoMatricula = "regular";
+      adicionarEventoAluno(aluno.id, "Bolsa removida");
+    });
+    DataStore.save();
+    
+    atualizarDropdownBolsistas();
+    renderBolsistasChips();
+    renderCardsBolsistas();
+    alert("Todas as bolsas foram removidas.");
+  };
+  
+  // ========== FILTROS ==========
   const header = document.createElement("div");
   header.style.cssText = "display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;";
   
   // Filtro por turma
   const selectTurma = document.createElement("select");
   selectTurma.id = "filtro-turma-bolsista";
+  selectTurma.setAttribute("data-testid", "select-filter-turma");
   selectTurma.style.cssText = "padding: 0.5rem; min-width: 180px;";
   selectTurma.innerHTML = '<option value="">Todas as Turmas</option>';
   turmas.forEach(t => {
@@ -1260,6 +1350,7 @@ function renderBolsistas() {
   // Filtro por status
   const selectStatus = document.createElement("select");
   selectStatus.id = "filtro-status-bolsista";
+  selectStatus.setAttribute("data-testid", "select-filter-status");
   selectStatus.style.cssText = "padding: 0.5rem;";
   selectStatus.innerHTML = `
     <option value="">Todos os Status</option>
@@ -1268,11 +1359,11 @@ function renderBolsistas() {
   `;
   header.appendChild(selectStatus);
   
-  // Botao de adicionar bolsista
+  // Botao de adicionar bolsista (modal detalhado)
   const btnNovo = document.createElement("button");
-  btnNovo.className = "btn-primary";
-  btnNovo.textContent = "+ Conceder Bolsa";
-  btnNovo.setAttribute("data-testid", "button-new-scholarship");
+  btnNovo.className = "btn-secondary";
+  btnNovo.textContent = "+ Bolsa Detalhada";
+  btnNovo.setAttribute("data-testid", "button-new-scholarship-detailed");
   btnNovo.onclick = () => abrirModalConcederBolsa();
   header.appendChild(btnNovo);
   
@@ -1288,6 +1379,66 @@ function renderBolsistas() {
   selectStatus.onchange = () => renderCardsBolsistas();
   
   renderCardsBolsistas();
+}
+
+/** Atualiza dropdown de alunos disponiveis para bolsa */
+function atualizarDropdownBolsistas() {
+  const select = document.getElementById("bolsista-busca");
+  if (!select) return;
+  
+  const alunosDisponiveis = DataStore.state.data.alunos.filter(a => 
+    a.status === "ativo" && !isBolsista(a)
+  );
+  
+  select.innerHTML = '<option value="">Buscar aluno para conceder bolsa...</option>';
+  alunosDisponiveis.forEach(a => {
+    const turma = DataStore.findById("turmas", a.turma);
+    const turmaLabel = turma ? ` (${turma.nome})` : "";
+    select.innerHTML += `<option value="${a.id}">${a.nome}${turmaLabel}</option>`;
+  });
+}
+
+/** Renderiza chips de bolsistas */
+function renderBolsistasChips() {
+  const container = document.getElementById("bolsistas-chips");
+  if (!container) return;
+  container.innerHTML = "";
+  
+  const bolsistas = DataStore.state.data.alunos.filter(a => isBolsista(a));
+  
+  if (bolsistas.length === 0) {
+    container.innerHTML = '<span style="color: var(--color-text-secondary); font-style: italic;">Nenhum bolsista cadastrado</span>';
+    return;
+  }
+  
+  bolsistas.forEach(aluno => {
+    const tipoBolsa = aluno.bolsa?.tipo || "integral";
+    const statusClass = aluno.status === "ativo" ? "#16a34a" : "#f59e0b";
+    
+    const chip = document.createElement("span");
+    chip.style.cssText = `display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.75rem; background: #dbeafe; color: #1d4ed8; border-radius: 4px; font-size: 0.85rem; border-left: 3px solid ${statusClass};`;
+    chip.setAttribute("data-testid", `chip-bolsista-${aluno.id}`);
+    chip.innerHTML = `
+      <span>${aluno.nome}</span>
+      <span style="font-size: 0.75rem; opacity: 0.8;">(${formatarTipoBolsa(tipoBolsa)})</span>
+      <button type="button" data-id="${aluno.id}" data-testid="button-remove-bolsista-${aluno.id}" style="background: none; border: none; cursor: pointer; color: #1d4ed8; font-weight: bold; padding: 0 2px; font-size: 1rem;" title="Remover bolsa">X</button>
+    `;
+    
+    chip.querySelector("button").onclick = () => {
+      if (confirm(`Remover bolsa de ${aluno.nome}?\n\nO aluno continuara cadastrado.`)) {
+        aluno.bolsa = { ativa: false, removidaEm: new Date().toISOString() };
+        aluno.tipoMatricula = "regular";
+        DataStore.save();
+        adicionarEventoAluno(aluno.id, "Bolsa removida");
+        
+        atualizarDropdownBolsistas();
+        renderBolsistasChips();
+        renderCardsBolsistas();
+      }
+    };
+    
+    container.appendChild(chip);
+  });
 }
 
 /** Renderiza cards de bolsistas */
