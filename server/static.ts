@@ -2,7 +2,8 @@ import express, { type Express } from "express";
 import path from "path";
 
 export function serveStatic(app: Express) {
-  const clientPath = path.resolve(__dirname, "..", "client");
+  // In production, files are copied to dist/client by the build script
+  const clientPath = path.resolve(__dirname, "client");
   const publicPath = path.resolve(clientPath, "public");
 
   // Serve static files from client/public (app.js, style.css, etc.)
