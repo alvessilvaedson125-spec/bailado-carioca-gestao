@@ -55,7 +55,44 @@ client/
 11. **Lixeira (Trash)**: View and restore deleted items
 12. **Configuracoes (Settings)**: Data import/export and preferences
 
-## Recent Changes (Version 3)
+## Recent Changes (Version 4)
+
+### Dashboard Charts (Chart.js)
+- Toggle button "Exibir Graficos" / "Ocultar Graficos" on dashboard
+- Bar chart showing Entradas x Saidas for last 6 months
+- Line chart showing Saldo evolution
+- Chart lifecycle management to prevent canvas reuse errors
+- Respects dark/light mode for colors
+
+### Delinquency Notifications
+- Badge "Pendente" shown on student cards when unpaid mensalidade exists for previous month
+- Alert card on dashboard listing all inadimplent students with quick access to payments
+- contarInadimplentes() and alunoInadimplente() functions for checking status
+
+### Monthly Report Comparison
+- Comparative section showing current vs previous month metrics
+- Entradas, Saidas, and Saldo with percentage change
+- Color-coded arrows: green [+] for increase, red [-] for decrease, gray [=] for stable
+
+### Teacher Payment/Commission System
+- tipoPagamento field: "fixo" (fixed monthly), "por_aluno" (per student), "percentual" (percentage of class revenue)
+- valorPagamento field for storing the payment value
+- "Relatorio de Pagamentos" modal in Professores showing automatic calculations
+- Calculates based on assigned classes and active students
+
+### Student Timeline (Historico)
+- Automatic historico array on each student tracking all events
+- Events recorded: Matricula criada, Trancamento, Reativacao, Exclusao, Pagamentos
+- "Historico" button on student cards to view complete timeline
+- Events sorted by most recent first with date/time display
+
+### Structured Weekdays for Classes
+- diasSemana array storing selected days (seg, ter, qua, qui, sex, sab, dom)
+- Checkboxes in Turma modal for each day of the week
+- Separate horarioTempo field for time (e.g., "19:00 - 20:30")
+- Combined horario field for display compatibility
+
+## Previous Changes (Version 3)
 
 - Added optional email and CPF fields to student registration
 - Added categoria field to Caixa entries for better classification
