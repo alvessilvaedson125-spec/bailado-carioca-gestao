@@ -108,19 +108,25 @@ client/
 - Separate horarioTempo field for time (e.g., "19:00 - 20:30")
 - Combined horario field for display compatibility
 
-### Bolsistas (Scholarship Students) - Version 6
+### Bolsistas (Scholarship Students) - Version 8
 - New `bolsa` field on student data: ativa (boolean), tipo (integral/parcial/apoio), observacao
+- **Multi-Turma Support**: Bolsistas can be linked to multiple turmas
+  - `turmas_ids`: array of turma IDs
+  - `turma`: first turma ID (for backward compatibility)
+  - Helper functions: getTurmasIds(), setTurmasIds(), alunoEmTurma()
+  - Automatic migration from single turma to array
 - **Bolsistas Page**: List only students with bolsa.ativa === true
-- Filters by turma and status (ativo/trancado)
-- Card display: name, badges (Bolsista, Type, Status), turma, observation
+- Filters by turma (with nome + nivel display) and status (ativo/trancado)
+- Card display: name, badges (Bolsista, Type, Status), all turmas with "Nome - Nivel" format, observation
 - Actions: Historico, Presenca, Editar Bolsa, Remover Bolsa
 - Modal "Conceder Bolsa" to grant scholarship to regular students
-- Modal "Editar Bolsa" to update scholarship type and observation
+- Modal "Editar Bolsa" to update scholarship type, manage turmas (add/remove/clear), and observation
+- Modal "Novo Bolsista" for direct registration with multi-turma selection
 - Remove bolsa keeps student in system (only removes scholarship)
 - **Integration with Mensalidades**: Bolsistas excluded from payment selection
 - **Integration with Inadimplentes**: Bolsistas never marked as delinquent
-- **Integration with Presenca**: Bolsistas appear with tipoMatricula = "bolsista"
-- **Historico Events**: "Bolsa concedida", "Bolsa atualizada", "Bolsa removida"
+- **Integration with Presenca**: Bolsistas appear in ALL linked turmas
+- **Historico Events**: "Bolsa concedida", "Bolsa atualizada", "Bolsa removida", "Bolsista vinculado a turma X - Nivel", "Bolsista removido da turma X - Nivel"
 - isBolsista(aluno) helper function for checking scholarship status
 - Zero impact on Caixa, financial reports, or receipts
 
