@@ -751,17 +751,23 @@ const pagesRenderers = {
     chartSection.style.cssText = "margin-top: 2rem;";
     chartSection.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="margin: 0; font-size: 1.1rem; color: #374151;">Evolucao Financeira (ultimos 6 meses)</h3>
+        <h3 style="margin: 0; font-size: 1.1rem; color: var(--color-text-primary);">Evolucao Financeira (ultimos 6 meses)</h3>
         <button class="btn-secondary" id="toggle-charts" style="font-size: 0.8rem;">Mostrar Graficos</button>
       </div>
-      <div id="charts-container" style="display: none; gap: 1.5rem;">
-        <div class="summary-card" style="padding: 1.5rem; margin-bottom: 1rem;">
-          <h4 style="margin: 0 0 1rem 0; font-size: 0.95rem; color: #64748b;">Entradas x Saidas</h4>
-          <canvas id="chart-entradas-saidas" height="200"></canvas>
-        </div>
-        <div class="summary-card" style="padding: 1.5rem;">
-          <h4 style="margin: 0 0 1rem 0; font-size: 0.95rem; color: #64748b;">Saldo Mensal</h4>
-          <canvas id="chart-saldo" height="200"></canvas>
+      <div id="charts-container" style="display: none;">
+        <div class="charts-grid">
+          <div class="summary-card chart-card">
+            <h4 class="chart-title">Entradas x Saidas</h4>
+            <div class="chart-wrapper">
+              <canvas id="chart-entradas-saidas"></canvas>
+            </div>
+          </div>
+          <div class="summary-card chart-card">
+            <h4 class="chart-title">Saldo Mensal</h4>
+            <div class="chart-wrapper">
+              <canvas id="chart-saldo"></canvas>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -882,46 +888,62 @@ function renderCardsAlunosAtivos(buscaNome) {
     const isInadimplente = alunoInadimplente(aluno.id);
 
     const card = document.createElement("div");
-    card.className = "summary-card";
-    card.style.cursor = "default";
+    card.className = "summary-card aluno-card";
     if (isInadimplente) {
-      card.style.borderLeft = "4px solid #f59e0b";
+      card.classList.add("aluno-pendente");
     }
-    const dataMatriculaFormatada = aluno.dataMatricula 
-      ? new Date(aluno.dataMatricula).toLocaleDateString("pt-BR")
-      : "-";
 
     card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: start; gap: 0.5rem;">
-        <strong style="font-size: 1.1rem;">${aluno.nome}</strong>
-        <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
-          ${isInadimplente ? '<span style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: #fef3c7; color: #d97706;">Pendente</span>' : ''}
-          <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: #f0fdf4; color: #16a34a;">Ativo</span>
+      <div class="aluno-header">
+        <h3 class="aluno-nome">${aluno.nome}</h3>
+        <div class="aluno-badges">
+          ${isInadimplente ? '<span class="badge badge-warning">Pendente</span>' : ''}
+          <span class="badge badge-success">Ativo</span>
         </div>
       </div>
-      <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
-        Tel: ${aluno.telefone || "Não informado"}<br>
-        ${aluno.email ? `E-mail: ${aluno.email}<br>` : ""}
-        ${aluno.cpf ? `CPF: ${aluno.cpf}<br>` : ""}
-        Turma: ${turma ? `${turma.nome} (${turma.nivel})` : "Sem turma"}<br>
-        Unidade: ${unidade?.nome || turma?.unidade || aluno.unidade || "-"}<br>
-        Mensalidade: ${formatarReais(aluno.mensalidade)}<br>
-        Tipo: ${aluno.tipoMatricula || aluno.tipo || "Normal"}<br>
-        Matricula: ${dataMatriculaFormatada}
-      </p>
-      <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;"></div>
+      
+      <div class="aluno-body">
+        <div class="aluno-info-row aluno-info-primary">
+          <span class="info-icon">T</span>
+          <span>${turma ? `${turma.nome} (${turma.nivel})` : "Sem turma"}</span>
+        </div>
+        <div class="aluno-info-row">
+          <span class="info-icon">U</span>
+          <span>${unidade?.nome || turma?.unidade || aluno.unidade || "-"}</span>
+        </div>
+        <div class="aluno-info-row aluno-info-highlight">
+          <span class="info-icon">$</span>
+          <span><strong>${formatarReais(aluno.mensalidade)}</strong> - ${aluno.tipoMatricula || aluno.tipo || "Normal"}</span>
+        </div>
+        <div class="aluno-info-row aluno-info-secondary">
+          <span class="info-icon">F</span>
+          <span>${aluno.telefone || "Nao informado"}</span>
+        </div>
+      </div>
+      
+      <div class="aluno-footer">
+        <div class="aluno-actions-primary"></div>
+        <div class="aluno-actions-secondary"></div>
+      </div>
     `;
 
-    const acoes = card.querySelector("div:last-child");
+    const acoesPrimary = card.querySelector(".aluno-actions-primary");
+    const acoesSecondary = card.querySelector(".aluno-actions-secondary");
 
     const btnHistorico = document.createElement("button");
-    btnHistorico.className = "btn-secondary";
+    btnHistorico.className = "btn-secondary btn-sm";
     btnHistorico.textContent = "Historico";
     btnHistorico.onclick = () => abrirHistoricoAluno(aluno);
-    acoes.appendChild(btnHistorico);
+    acoesPrimary.appendChild(btnHistorico);
+
+    const btnEditar = document.createElement("button");
+    btnEditar.className = "btn-primary btn-sm";
+    btnEditar.textContent = "Editar";
+    btnEditar.onclick = () => abrirModalAluno(aluno);
+    acoesPrimary.appendChild(btnEditar);
 
     const btnTrancar = document.createElement("button");
-    btnTrancar.className = "btn-secondary";
+    btnTrancar.className = "btn-muted btn-sm";
     btnTrancar.textContent = "Trancar";
     btnTrancar.onclick = () => {
       if (confirm("Trancar matricula deste aluno?")) {
@@ -931,16 +953,10 @@ function renderCardsAlunosAtivos(buscaNome) {
         UI.navigate("alunos");
       }
     };
-    acoes.appendChild(btnTrancar);
-
-    const btnEditar = document.createElement("button");
-    btnEditar.className = "btn-secondary";
-    btnEditar.textContent = "Editar";
-    btnEditar.onclick = () => abrirModalAluno(aluno);
-    acoes.appendChild(btnEditar);
+    acoesSecondary.appendChild(btnTrancar);
 
     const btnExcluir = document.createElement("button");
-    btnExcluir.className = "btn-secondary";
+    btnExcluir.className = "btn-muted btn-sm";
     btnExcluir.textContent = "Excluir";
     btnExcluir.onclick = () => {
       if (confirm("Mover aluno para lixeira?")) {
@@ -950,7 +966,7 @@ function renderCardsAlunosAtivos(buscaNome) {
         UI.navigate("alunos");
       }
     };
-    acoes.appendChild(btnExcluir);
+    acoesSecondary.appendChild(btnExcluir);
 
     grid.appendChild(card);
   });
@@ -3760,6 +3776,39 @@ function importarDados(file, msgElement) {
 }
 
 /* =========================
+   MOBILE SIDEBAR
+========================= */
+function initMobileSidebar() {
+  const toggle = document.getElementById("sidebar-toggle");
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebar-overlay");
+  
+  if (!toggle || !sidebar || !overlay) return;
+  
+  toggle.onclick = () => {
+    sidebar.classList.add("open");
+    overlay.classList.add("active");
+  };
+  
+  overlay.onclick = () => {
+    sidebar.classList.remove("open");
+    overlay.classList.remove("active");
+  };
+  
+  document.querySelectorAll("#menu .menu-item").forEach(item => {
+    item.addEventListener("click", () => {
+      if (window.innerWidth <= 768) {
+        sidebar.classList.remove("open");
+        overlay.classList.remove("active");
+      }
+    });
+  });
+}
+
+/* =========================
    START
 ========================= */
-document.addEventListener("DOMContentLoaded", () => UI.init());
+document.addEventListener("DOMContentLoaded", () => {
+  UI.init();
+  initMobileSidebar();
+});

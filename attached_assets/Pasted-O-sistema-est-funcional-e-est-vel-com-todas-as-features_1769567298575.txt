@@ -1,0 +1,151 @@
+O sistema está funcional e estável, com todas as features principais já implementadas (alunos, turmas, mensalidades, caixa, recibos, gráficos, histórico, etc.).
+
+Agora precisamos apenas de correções de UX, layout e comportamento visual, mantendo 100% da lógica existente.
+
+⚠️ NÃO adicionar novas funcionalidades
+⚠️ NÃO alterar regras de negócio
+⚠️ NÃO remover botões ou dados existentes
+✅ Apenas corrigir layout, responsividade e bugs visuais
+
+1️⃣ CORRIGIR GRÁFICOS DO DASHBOARD (BUG CRÍTICO)
+Problema atual
+
+Os gráficos (Chart.js) ficam “elásticos”
+
+Ao abrir a aba, eles continuam expandindo indefinidamente
+
+Correção obrigatória
+
+Definir altura fixa e controlada para os gráficos
+
+Usar maintainAspectRatio: false
+
+Envolver os gráficos em um container com altura definida
+
+Garantir que os gráficos não re-renderizem infinitamente
+
+🎯 Resultado esperado:
+
+Gráficos estáveis
+
+Sem crescimento infinito
+
+Responsivos, mas com limites claros
+
+2️⃣ REORGANIZAR CARD DE ALUNO (UX PROFISSIONAL)
+Problema atual
+
+Layout confuso
+
+Botões dominam o topo
+
+Falta hierarquia visual
+
+Não parece SaaS profissional
+
+Nova estrutura OBRIGATÓRIA do card
+Cabeçalho
+
+Nome do aluno em destaque
+
+Badges de status (Ativo / Pendente) alinhados à direita
+
+Corpo (ordem visual exata)
+
+Turma + nível
+
+Unidade
+
+Mensalidade + tipo (linha destacada visualmente)
+
+Telefone (informação secundária)
+
+Usar ícones pequenos e consistentes.
+
+Rodapé
+
+Botões agrupados no rodapé:
+
+Histórico / Editar (ações primárias)
+
+Trancar / Excluir (ações destrutivas, visual mais neutro)
+
+Em desktop: botões em linha
+
+Em mobile: botões empilhados
+
+⚠️ Não remover nenhum botão existente
+⚠️ Não mover histórico para fora do card
+⚠️ Apenas reorganizar
+
+3️⃣ RESPONSIVIDADE TOTAL DO APP (OBRIGATÓRIO)
+Corrigir para:
+
+Notebook
+
+Tablet
+
+Celular
+
+Regras:
+
+Usar grid fluido (auto-fit, minmax)
+
+Nenhum overflow horizontal
+
+Cards se reorganizam automaticamente
+
+Botões nunca quebram layout
+
+Sidebar colapsável ou adaptável no mobile
+
+🎯 Resultado esperado:
+
+App utilizável com uma mão no celular
+
+Cards limpos em qualquer tela
+
+4️⃣ PADRÃO VISUAL CONSISTENTE (SEM MUDAR CORES BASE)
+Ajustes permitidos:
+
+Espaçamento interno dos cards
+
+Alinhamentos
+
+Tamanho de fontes
+
+Peso visual (negrito apenas no que importa)
+
+Proibido:
+
+Trocar paleta de cores
+
+Trocar identidade visual
+
+Criar novo tema
+
+🎯 Resultado esperado:
+
+Visual limpo
+
+Aparência de sistema profissional pago
+
+Consistência entre Alunos, Turmas, Caixa e Recibos
+
+5️⃣ CONFIRMAÇÃO FINAL
+
+Ao finalizar:
+
+Confirmar que nenhuma funcionalidade foi quebrada
+
+Confirmar que preview abre sem erros
+
+Confirmar que todos os dados existentes continuam visíveis
+
+OBJETIVO FINAL
+
+Transformar o sistema de:
+
+“Funciona bem”
+em
+“Funciona bem e parece profissional”

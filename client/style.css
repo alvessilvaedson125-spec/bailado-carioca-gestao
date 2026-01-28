@@ -70,6 +70,12 @@ body.dark-mode .btn-secondary:hover {
   background: #475569;
 }
 
+body.dark-mode .aluno-header,
+body.dark-mode .aluno-footer,
+body.dark-mode .aluno-info-row.aluno-info-highlight {
+  background: rgba(0,0,0,0.2);
+}
+
 /* ======================================================
    RESET
 ====================================================== */
@@ -342,4 +348,372 @@ body {
   border-radius: var(--radius-md);
   padding: .65rem 1.3rem;
   cursor: pointer;
+}
+
+/* ======================================================
+   CHARTS - FIXED HEIGHT
+====================================================== */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.chart-card {
+  padding: 1.25rem;
+}
+
+.chart-title {
+  margin: 0 0 1rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.chart-wrapper {
+  position: relative;
+  height: 220px;
+  width: 100%;
+}
+
+.chart-wrapper canvas {
+  max-height: 100%;
+  max-width: 100%;
+}
+
+/* ======================================================
+   STUDENT CARD - PROFESSIONAL LAYOUT
+====================================================== */
+.aluno-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.aluno-card.aluno-pendente {
+  border-left: 4px solid #f59e0b;
+}
+
+.aluno-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.aluno-nome {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.aluno-badges {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.badge {
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.badge-success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.badge-warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.badge-danger {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.badge-muted {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+body.dark-mode .badge-success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+body.dark-mode .badge-warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+body.dark-mode .badge-danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+body.dark-mode .badge-muted {
+  background: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
+}
+
+.aluno-body {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.aluno-info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+  color: var(--color-text-secondary);
+}
+
+.aluno-info-row.aluno-info-primary {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.aluno-info-row.aluno-info-highlight {
+  background: var(--color-bg);
+  margin: 0.25rem -1.25rem;
+  padding: 0.5rem 1.25rem;
+}
+
+.aluno-info-row.aluno-info-secondary {
+  font-size: 0.82rem;
+}
+
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: var(--color-border);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.aluno-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem 1rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.aluno-actions-primary,
+.aluno-actions-secondary {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.aluno-actions-secondary {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Small buttons */
+.btn-sm {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.btn-muted {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: .65rem 1.2rem;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.btn-muted:hover {
+  background: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+/* ======================================================
+   MOBILE SIDEBAR TOGGLE
+====================================================== */
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 200;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
+}
+
+/* ======================================================
+   RESPONSIVE - TABLET (<1024px)
+====================================================== */
+@media (max-width: 1024px) {
+  #content-area {
+    padding: 1.5rem;
+  }
+  
+  .dashboard-cards {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+  }
+  
+  .modal-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ======================================================
+   RESPONSIVE - MOBILE (<768px)
+====================================================== */
+@media (max-width: 768px) {
+  .sidebar-toggle {
+    display: block;
+  }
+  
+  .sidebar-overlay.active {
+    display: block;
+  }
+  
+  #sidebar {
+    position: fixed;
+    left: -280px;
+    top: 0;
+    height: 100%;
+    z-index: 100;
+    transition: left 0.3s ease;
+  }
+  
+  #sidebar.open {
+    left: 0;
+  }
+  
+  #main-content {
+    width: 100%;
+  }
+  
+  .top-bar {
+    padding: 1rem;
+    padding-left: 3.5rem;
+  }
+  
+  #page-title {
+    font-size: 1.3rem;
+  }
+  
+  #content-area {
+    padding: 1rem;
+  }
+  
+  .dashboard-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  .summary-card {
+    padding: 1rem;
+  }
+  
+  .card-value {
+    font-size: 1.5rem;
+  }
+  
+  .modal-card {
+    padding: 1.25rem;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .modal-title {
+    font-size: 1.2rem;
+  }
+  
+  .aluno-footer {
+    flex-direction: column;
+  }
+  
+  .aluno-actions-primary,
+  .aluno-actions-secondary {
+    width: 100%;
+  }
+  
+  .aluno-actions-primary button,
+  .aluno-actions-secondary button {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .chart-wrapper {
+    height: 180px;
+  }
+}
+
+/* ======================================================
+   RESPONSIVE - SMALL MOBILE (<480px)
+====================================================== */
+@media (max-width: 480px) {
+  .dashboard-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .user-profile {
+    display: none;
+  }
+  
+  .brand {
+    padding: 1.25rem;
+  }
+  
+  .brand h2 {
+    font-size: 1.1rem;
+  }
 }
