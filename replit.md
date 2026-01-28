@@ -23,8 +23,22 @@ This is a management system for a dance school (Bailado Carioca) built as a **pu
 
 ### Data Layer
 - **Storage**: localStorage with JSON serialization
-- **Key**: "bailadoCariocaData" stores all application data
-- **Theme**: "bailadoTheme" stores theme preference (light/dark)
+- **Key**: "bailadoData" stores all application data
+- **Key**: "bailadoTheme" stores theme preference (light/dark)
+- **Key**: "bailadoSessao" stores user session (authentication)
+
+### Authentication System (Version 7)
+- **Welcome Screen**: Initial screen with logo and "Entrar no Sistema" button
+- **Login**: Local authentication with username/password
+- **Session**: Stored in localStorage (usuario, nome, perfil, loginEm)
+- **Profiles**:
+  - **admin**: Full access to all modules
+  - **operacional**: Limited to Alunos, Bolsistas, Presenca, Turmas, Unidades, Trancados
+- **Default Users**:
+  - edson / bailado2024 (admin)
+  - livia / bailado2024 (admin)
+  - operador / op2024 (operacional)
+- **Logout**: Clears session only, preserves all data
 
 ### Project Structure
 ```
