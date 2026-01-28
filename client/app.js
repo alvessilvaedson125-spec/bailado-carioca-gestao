@@ -219,6 +219,17 @@ function formatarData(dataISO) {
   return d.toLocaleDateString("pt-BR");
 }
 
+/** Formata categoria para exibição */
+function formatarCategoria(categoria) {
+  const labels = {
+    mensalidade: "Mensalidade",
+    aula_avulsa: "Aula Avulsa",
+    despesa: "Despesa",
+    outros: "Outros",
+  };
+  return labels[categoria] || categoria || "-";
+}
+
 /** Cria container de cards */
 function criarGridCards() {
   const grid = document.createElement("div");
@@ -547,12 +558,14 @@ function renderCardsAlunosAtivos(buscaNome) {
         <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: #f0fdf4; color: #16a34a;">Ativo</span>
       </div>
       <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
-        Tel: ${aluno.telefone || "Nao informado"}<br>
+        Tel: ${aluno.telefone || "Não informado"}<br>
+        ${aluno.email ? `E-mail: ${aluno.email}<br>` : ""}
+        ${aluno.cpf ? `CPF: ${aluno.cpf}<br>` : ""}
         Turma: ${turma ? `${turma.nome} (${turma.nivel})` : "Sem turma"}<br>
         Unidade: ${unidade?.nome || turma?.unidade || aluno.unidade || "-"}<br>
         Mensalidade: ${formatarReais(aluno.mensalidade)}<br>
         Tipo: ${aluno.tipoMatricula || aluno.tipo || "Normal"}<br>
-        Matricula: ${dataMatriculaFormatada}
+        Matrícula: ${dataMatriculaFormatada}
       </p>
       <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;"></div>
     `;
@@ -691,6 +704,16 @@ function abrirModalAluno(alunoExistente = null) {
       </div>
 
       <div class="field">
+        <label>E-mail</label>
+        <input id="email" type="email" placeholder="email@exemplo.com" value="${alunoExistente?.email || ""}">
+      </div>
+
+      <div class="field">
+        <label>CPF</label>
+        <input id="cpf" placeholder="000.000.000-00" value="${alunoExistente?.cpf || ""}">
+      </div>
+
+      <div class="field">
         <label>Turma *</label>
         <select id="turma">
           <option value="">Selecione uma turma</option>
@@ -765,9 +788,14 @@ function abrirModalAluno(alunoExistente = null) {
       return;
     }
 
+    const email = modal.querySelector("#email").value.trim();
+    const cpf = modal.querySelector("#cpf").value.trim();
+
     const dados = {
       nome: nome,
       telefone: telefone,
+      email: email || null,
+      cpf: cpf || null,
       turma: turmaId,
       unidade: inputUnidade.value,
       tipo: modal.querySelector("#tipo").value,
@@ -2078,6 +2106,7 @@ function renderCaixa() {
         </div>
         <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
           Data: ${formatarData(lanc.data)}<br>
+          ${lanc.categoria ? `Categoria: ${formatarCategoria(lanc.categoria)}<br>` : ""}
           ${lanc.aluno_nome ? `Aluno: ${lanc.aluno_nome}<br>` : ""}
           Pagamento: ${lanc.forma_pagamento || "-"}
           ${lanc.telefone ? `<br>Tel: ${lanc.telefone}` : ""}
@@ -2135,6 +2164,17 @@ function abrirModalCaixa(tipo) {
 
   const isEntrada = tipo === "entrada";
 
+  const categoriasEntrada = [
+    { value: "mensalidade", label: "Mensalidade" },
+    { value: "aula_avulsa", label: "Aula Avulsa" },
+    { value: "outros", label: "Outros" },
+  ];
+  const categoriasSaida = [
+    { value: "despesa", label: "Despesa" },
+    { value: "outros", label: "Outros" },
+  ];
+  const categorias = isEntrada ? categoriasEntrada : categoriasSaida;
+
   modal.innerHTML = `
     <h2 class="modal-title">${isEntrada ? "Nova Entrada" : "Nova Saída"}</h2>
 
@@ -2142,6 +2182,13 @@ function abrirModalCaixa(tipo) {
       <div class="field">
         <label>Descrição *</label>
         <input id="descricao" placeholder="Descrição do lançamento">
+      </div>
+
+      <div class="field">
+        <label>Categoria</label>
+        <select id="categoria">
+          ${categorias.map(c => `<option value="${c.value}">${c.label}</option>`).join("")}
+        </select>
       </div>
 
       <div class="field">
@@ -2190,9 +2237,11 @@ function abrirModalCaixa(tipo) {
       id: crypto.randomUUID(),
       data: modal.querySelector("#data").value || new Date().toISOString(),
       tipo: tipo,
+      categoria: modal.querySelector("#categoria").value,
       descricao: descricao,
       valor: valor,
       forma_pagamento: modal.querySelector("#forma").value,
+      status: "ativo",
     });
 
     DataStore.save();
@@ -2215,6 +2264,17 @@ function abrirModalEditarLancamento(lancamento, callback) {
     ? (lancamento.data.includes("T") ? lancamento.data.split("T")[0] : lancamento.data)
     : new Date().toISOString().split("T")[0];
 
+  const categoriasEntrada = [
+    { value: "mensalidade", label: "Mensalidade" },
+    { value: "aula_avulsa", label: "Aula Avulsa" },
+    { value: "outros", label: "Outros" },
+  ];
+  const categoriasSaida = [
+    { value: "despesa", label: "Despesa" },
+    { value: "outros", label: "Outros" },
+  ];
+  const categorias = isEntrada ? categoriasEntrada : categoriasSaida;
+
   modal.innerHTML = `
     <h2 class="modal-title">Editar ${isEntrada ? "Entrada" : "Saída"}</h2>
 
@@ -2222,6 +2282,13 @@ function abrirModalEditarLancamento(lancamento, callback) {
       <div class="field">
         <label>Descrição *</label>
         <input id="descricao" placeholder="Descrição do lançamento" value="${lancamento.descricao || ""}">
+      </div>
+
+      <div class="field">
+        <label>Categoria</label>
+        <select id="categoria">
+          ${categorias.map(c => `<option value="${c.value}" ${lancamento.categoria === c.value ? "selected" : ""}>${c.label}</option>`).join("")}
+        </select>
       </div>
 
       <div class="field">
@@ -2280,6 +2347,7 @@ function abrirModalEditarLancamento(lancamento, callback) {
     // Atualizar o lançamento
     lancamento.descricao = descricao;
     lancamento.valor = valor;
+    lancamento.categoria = modal.querySelector("#categoria").value;
     lancamento.data = modal.querySelector("#data").value || lancamento.data;
     lancamento.forma_pagamento = modal.querySelector("#forma").value;
     lancamento.editadoEm = new Date().toISOString();
