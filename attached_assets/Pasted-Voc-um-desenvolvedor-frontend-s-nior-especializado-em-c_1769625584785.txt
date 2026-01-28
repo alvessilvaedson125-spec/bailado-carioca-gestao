@@ -1,0 +1,90 @@
+Você é um desenvolvedor frontend sênior, especializado em correção de escopo, isolamento de estilos e CSS seguro.
+
+ATENÇÃO: houve um ERRO DE IMPLEMENTAÇÃO anterior.
+
+Ao ajustar a tela de abertura para usar a logo como plano de fundo, a logo do Bailado Carioca foi ALTERADA GLOBALMENTE em todo o aplicativo, o que NÃO é aceitável.
+
+Este prompt serve para:
+1. DESFAZER qualquer alteração global na logo
+2. RESTAURAR a logo original em TODAS as áreas do sistema
+3. ISOLAR o uso da logo como fundo APENAS na tela de abertura
+
+---
+
+## ⚠️ REGRAS ABSOLUTAS
+- NÃO alterar JavaScript funcional
+- NÃO alterar lógica de login
+- NÃO alterar estrutura de dados
+- NÃO alterar componentes globais
+- NÃO alterar a logo original usada no header, sidebar ou outros módulos
+- NÃO sobrescrever estilos globais de img, svg ou .logo
+- JavaScript puro + CSS
+- Correção focada em CSS e estrutura isolada
+
+---
+
+## 🎯 OBJETIVO PRINCIPAL
+Garantir que:
+- A logo oficial do Bailado Carioca volte ao estado ORIGINAL em todo o app
+- A logo como plano de fundo exista SOMENTE na tela de abertura
+- Nenhum outro módulo seja impactado visualmente
+
+---
+
+## 🧱 ESTRATÉGIA OBRIGATÓRIA (ISOLAMENTO)
+
+### 1️⃣ Logo global
+- Restaurar o uso atual da logo nos locais originais (header, sidebar, etc.)
+- Garantir que seletores globais como:
+  - img
+  - svg
+  - .logo
+  - .brand
+não sejam alterados
+
+### 2️⃣ Tela de abertura (Welcome Screen)
+- Criar (ou usar) um container EXCLUSIVO, por exemplo:
+  - .welcome-screen
+  - ou #welcomeScreen
+
+📌 Somente dentro desse container é permitido:
+- usar a logo como background
+- aplicar efeitos (blur, overlay, opacity)
+
+Exemplo conceitual (não obrigatório):
+- background-image: url("logo-bailado.png")
+- overlay escuro para legibilidade
+
+---
+
+## 🎨 REGRAS VISUAIS PARA A TELA DE ABERTURA
+- Logo como plano de fundo NÃO deve ser um <img> reutilizado
+- Usar background-image ou pseudo-elemento (::before)
+- Aplicar overlay para manter legibilidade
+- Texto e botão centralizados e legíveis
+- Nenhuma regra CSS deve vazar para fora da welcome screen
+
+---
+
+## 🛠️ O QUE FAZER AGORA
+1. Rever as alterações feitas anteriormente
+2. Reverter qualquer modificação global na logo
+3. Isolar completamente a estilização da tela de abertura
+4. Garantir que a logo global do sistema permaneça intacta
+
+---
+
+## 📌 CRITÉRIOS DE ACEITE
+A correção está correta se:
+- Header, sidebar e demais telas exibem a logo ORIGINAL, sem alterações
+- Apenas a tela de abertura usa a logo como fundo
+- Alterar/remover a tela de abertura NÃO afeta o resto do sistema
+- Nenhum estilo global de imagem foi modificado
+
+---
+
+🚨 IMPORTANTE:
+Este prompt é uma CORREÇÃO DE ERRO.
+Priorize isolamento, escopo restrito e reversão segura.
+Não redesenhar o sistema.
+Não reinventar a identidade visual.
