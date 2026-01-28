@@ -551,6 +551,16 @@ body {
   cursor: pointer;
 }
 
+.field select option {
+  background: #ffffff;
+  color: #1e293b;
+}
+
+body.dark-mode .field select option {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
 .field textarea {
   resize: vertical;
   min-height: 80px;
