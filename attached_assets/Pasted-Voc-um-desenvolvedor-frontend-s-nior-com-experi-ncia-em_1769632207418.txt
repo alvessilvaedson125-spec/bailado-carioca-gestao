@@ -1,0 +1,66 @@
+Você é um desenvolvedor frontend sênior com experiência em SPAs rodando dentro de iframes
+(como o preview do Replit).
+
+O sistema de gestão do Bailado Carioca (JavaScript puro + localStorage)
+está funcional e correto quando acessado pela URL externa ou em aba anônima,
+mas o preview embutido do Replit às vezes não reflete o estado real do app.
+
+---
+
+## ⚠️ IMPORTANTE
+Este pedido NÃO é para criar novas funcionalidades.
+É apenas para tornar o app mais robusto quando executado em ambientes de preview/iframe.
+
+---
+
+## REGRAS ABSOLUTAS
+- NÃO alterar lógica de negócio
+- NÃO alterar layout visual
+- NÃO criar novas telas
+- NÃO criar PWA
+- NÃO usar frameworks
+- NÃO remover funcionalidades existentes
+
+---
+
+## OBJETIVO
+Mitigar problemas do preview do Replit garantindo que:
+- o app inicialize corretamente mesmo se o DOM for reaproveitado
+- event listeners não sejam duplicados nem perdidos
+- o layout seja reconstruído de forma segura ao recarregar
+- o app seja resiliente a múltiplas inicializações
+
+---
+
+## AÇÕES PERMITIDAS E ESPERADAS
+
+1. Tornar a inicialização do app **idempotente**
+   - se o app já estiver montado, desmontar antes de montar novamente
+   - limpar o container raiz antes de renderizar
+
+2. Garantir que o bootstrap do app:
+   - execute sempre de forma limpa
+   - não dependa de estado residual do DOM
+
+3. Evitar acúmulo de event listeners
+   - remover listeners antigos antes de adicionar novos
+   - ou usar delegação de eventos segura
+
+4. Garantir que a navegação funcione mesmo após:
+   - hot reload
+   - refresh parcial
+   - reaproveitamento de iframe
+
+---
+
+## CRITÉRIO DE ACEITE
+- O app continua funcionando normalmente na URL externa
+- O preview do Replit passa a refletir corretamente o estado do app
+- Nenhuma funcionalidade existente é quebrada
+- Nenhum comportamento novo é introduzido
+
+---
+
+🚨 OBSERVAÇÃO FINAL
+O preview do Replit é um ambiente não confiável.
+O objetivo aqui é mitigação, não perfeição absoluta.

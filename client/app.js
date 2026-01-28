@@ -4,6 +4,35 @@
  */
 
 /* =========================
+   APP STATE (Idempotent Init)
+========================= */
+const AppState = {
+  initialized: false,
+  eventListeners: [],
+
+  addListener(element, event, handler) {
+    if (element) {
+      element.addEventListener(event, handler);
+      this.eventListeners.push({ element, event, handler });
+    }
+  },
+
+  cleanup() {
+    this.eventListeners.forEach(({ element, event, handler }) => {
+      if (element) {
+        element.removeEventListener(event, handler);
+      }
+    });
+    this.eventListeners = [];
+    this.initialized = false;
+  },
+
+  markInitialized() {
+    this.initialized = true;
+  }
+};
+
+/* =========================
    DATA STORE
 ========================= */
 const DataStore = {
@@ -5386,6 +5415,7 @@ function initMobileSidebar() {
   const toggle = document.getElementById("sidebar-toggle");
   const sidebar = document.getElementById("sidebar");
   const overlay = document.getElementById("sidebar-overlay");
+  const menu = document.getElementById("menu");
   
   if (!toggle || !sidebar || !overlay) return;
   
@@ -5399,20 +5429,36 @@ function initMobileSidebar() {
     overlay.classList.remove("active");
   };
   
-  document.querySelectorAll("#menu .menu-item").forEach(item => {
-    item.addEventListener("click", () => {
-      if (window.innerWidth <= 768) {
+  if (menu) {
+    menu.onclick = (e) => {
+      if (e.target.closest(".menu-item") && window.innerWidth <= 768) {
         sidebar.classList.remove("open");
         overlay.classList.remove("active");
       }
-    });
-  });
+    };
+  }
 }
 
 /* =========================
-   START
+   START (Idempotent)
 ========================= */
-document.addEventListener("DOMContentLoaded", () => {
+function bootstrapApp() {
+  if (AppState.initialized) {
+    AppState.cleanup();
+  }
+  
+  UI.menu = document.getElementById("menu");
+  UI.title = document.getElementById("page-title");
+  UI.content = document.getElementById("content-area");
+  
   UI.init();
   initMobileSidebar();
-});
+  
+  AppState.markInitialized();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootstrapApp);
+} else {
+  bootstrapApp();
+}
