@@ -79,9 +79,15 @@ body.dark-mode .modal-card {
 body.dark-mode input,
 body.dark-mode select,
 body.dark-mode textarea {
-  background: #0f172a;
-  color: #f1f5f9;
+  background: #0f172a !important;
+  color: #f1f5f9 !important;
   border-color: var(--color-border);
+}
+
+body.dark-mode input[readonly] {
+  background: #1e293b !important;
+  color: #94a3b8 !important;
+  cursor: default;
 }
 
 body.dark-mode select option {
