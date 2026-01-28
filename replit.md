@@ -92,6 +92,13 @@ client/
 - Separate horarioTempo field for time (e.g., "19:00 - 20:30")
 - Combined horario field for display compatibility
 
+### UX/Layout Improvements (Post Version 4)
+- Fixed dashboard charts: Fixed height containers (220px), no more infinite growth
+- Professional student cards: Header with name/badges, structured body with icons, footer with grouped actions
+- Full responsiveness: Mobile sidebar toggle, tablet/mobile breakpoints, fluid grids
+- Visual consistency: Badge system (success/warning/danger/muted), button variants (sm/muted), dark mode support
+- Mobile-first: Collapsible sidebar at 768px breakpoint, stacked cards on small screens
+
 ## Previous Changes (Version 3)
 
 - Added optional email and CPF fields to student registration
