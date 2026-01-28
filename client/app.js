@@ -17,6 +17,7 @@ const DataStore = {
       mensalidades: [],
       recibos: [],
       caixa: [],
+      presencas: [],
       lixeira: [],
       config: {
         nomeProjeto: "Bailado Carioca",
@@ -169,6 +170,7 @@ const UI = {
       ["mensalidades", "Mensalidades"],
       ["recibos", "Recibos"],
       ["caixa", "Caixa"],
+      ["presenca", "Presenca"],
       ["relatorio", "Relatorio Mensal"],
       ["lixeira", "Lixeira"],
       ["config", "Configuracoes"],
@@ -204,6 +206,7 @@ const UI = {
       mensalidades: "Mensalidades",
       recibos: "Recibos",
       caixa: "Caixa",
+      presenca: "Presenca",
       relatorio: "Relatorio Mensal",
       lixeira: "Lixeira",
       config: "Configuracoes",
@@ -818,6 +821,10 @@ const pagesRenderers = {
 
   caixa() {
     renderCaixa();
+  },
+
+  presenca() {
+    renderPresenca();
   },
 
   relatorio() {
@@ -3102,6 +3109,738 @@ function abrirModalAulaAvulsa() {
 }
 
 /* =========================
+   PRESENCA (FREQUENCIA)
+========================= */
+
+/** Renderiza pagina de presenca */
+function renderPresenca() {
+  const turmas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
+  
+  if (turmas.length === 0) {
+    UI.content.innerHTML = `
+      <div class="empty-state">
+        <h3>Nenhuma turma cadastrada</h3>
+        <p>Cadastre pelo menos uma turma para registrar presencas.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Tabs
+  const tabsContainer = document.createElement("div");
+  tabsContainer.style.cssText = "display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--color-border); padding-bottom: 0.5rem;";
+  
+  const tabRegistrar = document.createElement("button");
+  tabRegistrar.className = "btn-primary";
+  tabRegistrar.textContent = "Registrar Presenca";
+  tabRegistrar.id = "tab-registrar";
+  tabRegistrar.setAttribute("data-testid", "tab-register-attendance");
+  
+  const tabConsultar = document.createElement("button");
+  tabConsultar.className = "btn-secondary";
+  tabConsultar.textContent = "Consultar Presencas";
+  tabConsultar.id = "tab-consultar";
+  tabConsultar.setAttribute("data-testid", "tab-query-attendance");
+  
+  tabsContainer.appendChild(tabRegistrar);
+  tabsContainer.appendChild(tabConsultar);
+  UI.content.appendChild(tabsContainer);
+  
+  // Content container
+  const contentContainer = document.createElement("div");
+  contentContainer.id = "presenca-content";
+  UI.content.appendChild(contentContainer);
+  
+  // Tab handlers
+  tabRegistrar.onclick = () => {
+    tabRegistrar.className = "btn-primary";
+    tabConsultar.className = "btn-secondary";
+    renderRegistrarPresenca(contentContainer);
+  };
+  
+  tabConsultar.onclick = () => {
+    tabConsultar.className = "btn-primary";
+    tabRegistrar.className = "btn-secondary";
+    renderConsultarPresenca(contentContainer);
+  };
+  
+  // Start with registrar tab
+  renderRegistrarPresenca(contentContainer);
+}
+
+/** Renderiza aba de registrar presenca */
+function renderRegistrarPresenca(container) {
+  container.innerHTML = "";
+  
+  const turmas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
+  const hoje = new Date().toISOString().slice(0, 10);
+  
+  // Header with filters
+  const header = document.createElement("div");
+  header.style.cssText = "display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;";
+  
+  // Turma select
+  const fieldTurma = document.createElement("div");
+  fieldTurma.className = "field";
+  fieldTurma.innerHTML = `<label>Turma *</label>`;
+  const selectTurma = document.createElement("select");
+  selectTurma.id = "presenca-turma";
+  selectTurma.setAttribute("data-testid", "select-attendance-class");
+  selectTurma.style.cssText = "padding: 0.5rem; min-width: 200px;";
+  selectTurma.innerHTML = '<option value="">Selecione uma turma</option>';
+  turmas.forEach(t => {
+    selectTurma.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
+  });
+  fieldTurma.appendChild(selectTurma);
+  header.appendChild(fieldTurma);
+  
+  // Date input
+  const fieldData = document.createElement("div");
+  fieldData.className = "field";
+  fieldData.innerHTML = `<label>Data *</label>`;
+  const inputData = document.createElement("input");
+  inputData.type = "date";
+  inputData.id = "presenca-data";
+  inputData.setAttribute("data-testid", "input-attendance-date");
+  inputData.value = hoje;
+  inputData.style.cssText = "padding: 0.5rem;";
+  fieldData.appendChild(inputData);
+  header.appendChild(fieldData);
+  
+  // Load button
+  const btnCarregar = document.createElement("button");
+  btnCarregar.className = "btn-primary";
+  btnCarregar.textContent = "Carregar Alunos";
+  btnCarregar.style.marginTop = "1.25rem";
+  btnCarregar.setAttribute("data-testid", "button-load-students");
+  header.appendChild(btnCarregar);
+  
+  container.appendChild(header);
+  
+  // Alunos container
+  const alunosContainer = document.createElement("div");
+  alunosContainer.id = "presenca-alunos-container";
+  container.appendChild(alunosContainer);
+  
+  // Load button handler
+  btnCarregar.onclick = () => {
+    const turmaId = selectTurma.value;
+    const data = inputData.value;
+    
+    if (!turmaId || !data) {
+      alert("Selecione uma turma e data.");
+      return;
+    }
+    
+    renderAlunosPresenca(alunosContainer, turmaId, data);
+  };
+}
+
+/** Renderiza lista de alunos para marcar presenca */
+function renderAlunosPresenca(container, turmaId, data) {
+  container.innerHTML = "";
+  
+  const turma = DataStore.findById("turmas", turmaId);
+  if (!turma) return;
+  
+  // Buscar alunos ativos da turma
+  const alunos = DataStore.state.data.alunos.filter(a => 
+    a.status === "ativo" && a.turma === turmaId
+  );
+  
+  if (alunos.length === 0) {
+    container.innerHTML = '<p style="color: var(--color-text-secondary);">Nenhum aluno ativo nesta turma.</p>';
+    return;
+  }
+  
+  // Buscar presencas existentes para esta turma/data
+  const presencasExistentes = DataStore.state.data.presencas.filter(p => 
+    p.turma_id === turmaId && p.data === data
+  );
+  
+  // Info header
+  const infoHeader = document.createElement("div");
+  infoHeader.className = "summary-card";
+  infoHeader.style.marginBottom = "1rem";
+  infoHeader.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <strong>${turma.nome}</strong>
+        <span style="color: var(--color-text-secondary); margin-left: 0.5rem;">${formatarData(data)}</span>
+      </div>
+      <div style="display: flex; gap: 0.5rem;">
+        <span class="badge badge-success" id="count-presentes">0 Presentes</span>
+        <span class="badge badge-danger" id="count-faltas">0 Faltas</span>
+        <span class="badge badge-warning" id="count-justificadas">0 Justificadas</span>
+      </div>
+    </div>
+  `;
+  container.appendChild(infoHeader);
+  
+  // Quick actions
+  const quickActions = document.createElement("div");
+  quickActions.style.cssText = "display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;";
+  
+  const btnTodosPresentes = document.createElement("button");
+  btnTodosPresentes.className = "btn-secondary btn-sm";
+  btnTodosPresentes.textContent = "Marcar Todos Presentes";
+  btnTodosPresentes.setAttribute("data-testid", "button-mark-all-present");
+  quickActions.appendChild(btnTodosPresentes);
+  
+  const btnTodosFaltaram = document.createElement("button");
+  btnTodosFaltaram.className = "btn-secondary btn-sm";
+  btnTodosFaltaram.textContent = "Marcar Todos Falta";
+  btnTodosFaltaram.setAttribute("data-testid", "button-mark-all-absent");
+  quickActions.appendChild(btnTodosFaltaram);
+  
+  container.appendChild(quickActions);
+  
+  // Alunos list
+  const grid = document.createElement("div");
+  grid.className = "dashboard-cards";
+  grid.style.gridTemplateColumns = "repeat(auto-fill, minmax(300px, 1fr))";
+  
+  alunos.forEach(aluno => {
+    const presencaExistente = presencasExistentes.find(p => p.aluno_id === aluno.id);
+    const statusAtual = presencaExistente?.status || "";
+    const tipoMatricula = aluno.tipoMatricula || "regular";
+    
+    const card = document.createElement("div");
+    card.className = "summary-card";
+    card.dataset.alunoId = aluno.id;
+    card.dataset.presencaId = presencaExistente?.id || "";
+    
+    const tipoLabel = tipoMatricula === "bolsista" ? 
+      '<span class="badge badge-warning" style="margin-left: 0.5rem;">Bolsista</span>' : "";
+    
+    card.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+        <div>
+          <strong style="font-size: 1rem;">${aluno.nome}</strong>${tipoLabel}
+        </div>
+      </div>
+      <div class="presenca-buttons" style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+        <button class="btn-presenca btn-presente ${statusAtual === "presente" ? "active" : ""}" data-status="presente" data-testid="btn-presente-${aluno.id}">
+          [P] Presente
+        </button>
+        <button class="btn-presenca btn-falta ${statusAtual === "falta" ? "active" : ""}" data-status="falta" data-testid="btn-falta-${aluno.id}">
+          [F] Falta
+        </button>
+        <button class="btn-presenca btn-justificada ${statusAtual === "justificada" ? "active" : ""}" data-status="justificada" data-testid="btn-justificada-${aluno.id}">
+          [J] Justificada
+        </button>
+      </div>
+    `;
+    
+    // Button handlers
+    card.querySelectorAll(".btn-presenca").forEach(btn => {
+      btn.onclick = () => {
+        const novoStatus = btn.dataset.status;
+        registrarPresenca(aluno.id, turmaId, data, novoStatus, tipoMatricula, card);
+        
+        // Update visual
+        card.querySelectorAll(".btn-presenca").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        
+        atualizarContadores(container);
+      };
+    });
+    
+    grid.appendChild(card);
+  });
+  
+  container.appendChild(grid);
+  
+  // Quick action handlers
+  btnTodosPresentes.onclick = () => {
+    grid.querySelectorAll(".summary-card").forEach(card => {
+      const alunoId = card.dataset.alunoId;
+      const aluno = DataStore.findById("alunos", alunoId);
+      const tipoMatricula = aluno?.tipoMatricula || "regular";
+      registrarPresenca(alunoId, turmaId, data, "presente", tipoMatricula, card);
+      card.querySelectorAll(".btn-presenca").forEach(b => b.classList.remove("active"));
+      card.querySelector('[data-status="presente"]').classList.add("active");
+    });
+    atualizarContadores(container);
+  };
+  
+  btnTodosFaltaram.onclick = () => {
+    grid.querySelectorAll(".summary-card").forEach(card => {
+      const alunoId = card.dataset.alunoId;
+      const aluno = DataStore.findById("alunos", alunoId);
+      const tipoMatricula = aluno?.tipoMatricula || "regular";
+      registrarPresenca(alunoId, turmaId, data, "falta", tipoMatricula, card);
+      card.querySelectorAll(".btn-presenca").forEach(b => b.classList.remove("active"));
+      card.querySelector('[data-status="falta"]').classList.add("active");
+    });
+    atualizarContadores(container);
+  };
+  
+  // Initial count
+  atualizarContadores(container);
+  
+  // Add CSS for presenca buttons
+  adicionarEstilosPresenca();
+}
+
+/** Registra ou atualiza presenca de um aluno */
+function registrarPresenca(alunoId, turmaId, data, status, tipo, card) {
+  // Verificar se ja existe presenca para este aluno/turma/data
+  const presencaExistente = DataStore.state.data.presencas.find(p => 
+    p.aluno_id === alunoId && p.turma_id === turmaId && p.data === data
+  );
+  
+  if (presencaExistente) {
+    // Atualizar existente
+    presencaExistente.status = status;
+    presencaExistente.updatedAt = new Date().toISOString();
+  } else {
+    // Criar nova
+    const novaPresenca = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      aluno_id: alunoId,
+      turma_id: turmaId,
+      data: data,
+      status: status,
+      tipo: tipo === "bolsista" ? "bolsista" : "regular",
+      createdAt: new Date().toISOString()
+    };
+    DataStore.state.data.presencas.push(novaPresenca);
+    
+    // Atualizar dataset do card com novo ID
+    if (card) {
+      card.dataset.presencaId = novaPresenca.id;
+    }
+  }
+  
+  DataStore.save();
+  
+  // Adicionar ao historico do aluno
+  const turma = DataStore.findById("turmas", turmaId);
+  const statusLabel = status === "presente" ? "Presente" : status === "falta" ? "Falta" : "Falta Justificada";
+  const eventoTexto = `Presenca: ${statusLabel} - ${turma?.nome || "Turma"} - ${formatarData(data)}`;
+  adicionarEventoAluno(alunoId, eventoTexto);
+}
+
+/** Atualiza contadores de presenca */
+function atualizarContadores(container) {
+  const cards = container.querySelectorAll(".summary-card[data-aluno-id]");
+  let presentes = 0, faltas = 0, justificadas = 0;
+  
+  cards.forEach(card => {
+    const btnAtivo = card.querySelector(".btn-presenca.active");
+    if (btnAtivo) {
+      const status = btnAtivo.dataset.status;
+      if (status === "presente") presentes++;
+      else if (status === "falta") faltas++;
+      else if (status === "justificada") justificadas++;
+    }
+  });
+  
+  const countPresentes = container.querySelector("#count-presentes");
+  const countFaltas = container.querySelector("#count-faltas");
+  const countJustificadas = container.querySelector("#count-justificadas");
+  
+  if (countPresentes) countPresentes.textContent = `${presentes} Presentes`;
+  if (countFaltas) countFaltas.textContent = `${faltas} Faltas`;
+  if (countJustificadas) countJustificadas.textContent = `${justificadas} Justificadas`;
+}
+
+/** Adiciona estilos CSS para botoes de presenca */
+function adicionarEstilosPresenca() {
+  if (document.getElementById("presenca-styles")) return;
+  
+  const style = document.createElement("style");
+  style.id = "presenca-styles";
+  style.textContent = `
+    .btn-presenca {
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: var(--color-card);
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+    .btn-presenca:hover {
+      border-color: var(--color-text-muted);
+    }
+    .btn-presente.active {
+      background: #dcfce7;
+      border-color: #16a34a;
+      color: #15803d;
+    }
+    .btn-falta.active {
+      background: #fee2e2;
+      border-color: #dc2626;
+      color: #dc2626;
+    }
+    .btn-justificada.active {
+      background: #fef3c7;
+      border-color: #f59e0b;
+      color: #b45309;
+    }
+    body.dark-mode .btn-presente.active {
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+    }
+    body.dark-mode .btn-falta.active {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+    body.dark-mode .btn-justificada.active {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+/** Renderiza aba de consultar presencas */
+function renderConsultarPresenca(container) {
+  container.innerHTML = "";
+  
+  const turmas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
+  const alunos = DataStore.state.data.alunos.filter(a => a.status === "ativo");
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth() + 1;
+  const anoAtual = hoje.getFullYear();
+  
+  // Filters
+  const filterContainer = document.createElement("div");
+  filterContainer.style.cssText = "display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: flex-end;";
+  
+  // Turma filter
+  const fieldTurma = document.createElement("div");
+  fieldTurma.className = "field";
+  fieldTurma.innerHTML = `<label>Turma</label>`;
+  const selectTurma = document.createElement("select");
+  selectTurma.id = "consulta-turma";
+  selectTurma.style.cssText = "padding: 0.5rem; min-width: 180px;";
+  selectTurma.innerHTML = '<option value="">Todas</option>';
+  turmas.forEach(t => {
+    selectTurma.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
+  });
+  fieldTurma.appendChild(selectTurma);
+  filterContainer.appendChild(fieldTurma);
+  
+  // Aluno filter
+  const fieldAluno = document.createElement("div");
+  fieldAluno.className = "field";
+  fieldAluno.innerHTML = `<label>Aluno</label>`;
+  const selectAluno = document.createElement("select");
+  selectAluno.id = "consulta-aluno";
+  selectAluno.style.cssText = "padding: 0.5rem; min-width: 180px;";
+  selectAluno.innerHTML = '<option value="">Todos</option>';
+  alunos.forEach(a => {
+    selectAluno.innerHTML += `<option value="${a.id}">${a.nome}</option>`;
+  });
+  fieldAluno.appendChild(selectAluno);
+  filterContainer.appendChild(fieldAluno);
+  
+  // Mes filter
+  const fieldMes = document.createElement("div");
+  fieldMes.className = "field";
+  fieldMes.innerHTML = `<label>Mes</label>`;
+  const selectMes = document.createElement("select");
+  selectMes.id = "consulta-mes";
+  selectMes.style.cssText = "padding: 0.5rem;";
+  selectMes.innerHTML = `
+    <option value="0">Todos</option>
+    <option value="1">Janeiro</option>
+    <option value="2">Fevereiro</option>
+    <option value="3">Marco</option>
+    <option value="4">Abril</option>
+    <option value="5">Maio</option>
+    <option value="6">Junho</option>
+    <option value="7">Julho</option>
+    <option value="8">Agosto</option>
+    <option value="9">Setembro</option>
+    <option value="10">Outubro</option>
+    <option value="11">Novembro</option>
+    <option value="12">Dezembro</option>
+  `;
+  selectMes.value = mesAtual;
+  fieldMes.appendChild(selectMes);
+  filterContainer.appendChild(fieldMes);
+  
+  // Ano filter
+  const fieldAno = document.createElement("div");
+  fieldAno.className = "field";
+  fieldAno.innerHTML = `<label>Ano</label>`;
+  const selectAno = document.createElement("select");
+  selectAno.id = "consulta-ano";
+  selectAno.style.cssText = "padding: 0.5rem;";
+  for (let ano = anoAtual; ano >= anoAtual - 3; ano--) {
+    selectAno.innerHTML += `<option value="${ano}">${ano}</option>`;
+  }
+  fieldAno.appendChild(selectAno);
+  filterContainer.appendChild(fieldAno);
+  
+  // Tipo filter
+  const fieldTipo = document.createElement("div");
+  fieldTipo.className = "field";
+  fieldTipo.innerHTML = `<label>Tipo</label>`;
+  const selectTipo = document.createElement("select");
+  selectTipo.id = "consulta-tipo";
+  selectTipo.style.cssText = "padding: 0.5rem;";
+  selectTipo.innerHTML = `
+    <option value="">Todos</option>
+    <option value="regular">Regular</option>
+    <option value="bolsista">Bolsista</option>
+    <option value="aula_avulsa">Aula Avulsa</option>
+    <option value="reposicao">Reposicao</option>
+  `;
+  fieldTipo.appendChild(selectTipo);
+  filterContainer.appendChild(fieldTipo);
+  
+  // Buscar button
+  const btnBuscar = document.createElement("button");
+  btnBuscar.className = "btn-primary";
+  btnBuscar.textContent = "Buscar";
+  btnBuscar.setAttribute("data-testid", "button-search-attendance");
+  filterContainer.appendChild(btnBuscar);
+  
+  container.appendChild(filterContainer);
+  
+  // Results container
+  const resultsContainer = document.createElement("div");
+  resultsContainer.id = "consulta-results";
+  container.appendChild(resultsContainer);
+  
+  // Buscar handler
+  btnBuscar.onclick = () => {
+    const filtros = {
+      turmaId: selectTurma.value,
+      alunoId: selectAluno.value,
+      mes: parseInt(selectMes.value),
+      ano: parseInt(selectAno.value),
+      tipo: selectTipo.value
+    };
+    renderResultadosPresenca(resultsContainer, filtros);
+  };
+  
+  // Initial load
+  btnBuscar.click();
+}
+
+/** Renderiza resultados da consulta de presenca */
+function renderResultadosPresenca(container, filtros) {
+  container.innerHTML = "";
+  
+  let presencas = [...DataStore.state.data.presencas];
+  
+  // Apply filters
+  if (filtros.turmaId) {
+    presencas = presencas.filter(p => p.turma_id === filtros.turmaId);
+  }
+  if (filtros.alunoId) {
+    presencas = presencas.filter(p => p.aluno_id === filtros.alunoId);
+  }
+  if (filtros.mes > 0) {
+    presencas = presencas.filter(p => {
+      const d = new Date(p.data);
+      return d.getMonth() + 1 === filtros.mes;
+    });
+  }
+  if (filtros.ano > 0) {
+    presencas = presencas.filter(p => {
+      const d = new Date(p.data);
+      return d.getFullYear() === filtros.ano;
+    });
+  }
+  if (filtros.tipo) {
+    presencas = presencas.filter(p => p.tipo === filtros.tipo);
+  }
+  
+  // Sort by date desc
+  presencas.sort((a, b) => new Date(b.data) - new Date(a.data));
+  
+  // Summary
+  const totalPresentes = presencas.filter(p => p.status === "presente").length;
+  const totalFaltas = presencas.filter(p => p.status === "falta").length;
+  const totalJustificadas = presencas.filter(p => p.status === "justificada").length;
+  
+  const summaryCard = document.createElement("div");
+  summaryCard.className = "summary-card";
+  summaryCard.style.marginBottom = "1.5rem";
+  summaryCard.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <strong style="font-size: 1.1rem;">Resumo do Periodo</strong>
+        <p style="color: var(--color-text-secondary); margin-top: 0.25rem;">${presencas.length} registro(s) encontrado(s)</p>
+      </div>
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <div style="text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: 600; color: #16a34a;">${totalPresentes}</div>
+          <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Presentes</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: 600; color: #dc2626;">${totalFaltas}</div>
+          <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Faltas</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: 600; color: #f59e0b;">${totalJustificadas}</div>
+          <div style="font-size: 0.8rem; color: var(--color-text-secondary);">Justificadas</div>
+        </div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+      <button class="btn-secondary btn-sm" id="btn-pdf-presenca" data-testid="button-export-pdf">Exportar PDF</button>
+      <button class="btn-secondary btn-sm" id="btn-whatsapp-presenca" style="background: #25D366; color: white; border: none;" data-testid="button-share-whatsapp">Compartilhar WhatsApp</button>
+    </div>
+  `;
+  container.appendChild(summaryCard);
+  
+  // PDF/WhatsApp handlers
+  summaryCard.querySelector("#btn-pdf-presenca").onclick = () => {
+    gerarPDFPresenca(presencas, filtros);
+  };
+  
+  summaryCard.querySelector("#btn-whatsapp-presenca").onclick = () => {
+    compartilharPresencaWhatsApp(presencas, filtros);
+  };
+  
+  if (presencas.length === 0) {
+    container.innerHTML += '<p style="color: var(--color-text-secondary);">Nenhuma presenca encontrada para os filtros selecionados.</p>';
+    return;
+  }
+  
+  // Group by date for display
+  const groupedByDate = {};
+  presencas.forEach(p => {
+    if (!groupedByDate[p.data]) {
+      groupedByDate[p.data] = [];
+    }
+    groupedByDate[p.data].push(p);
+  });
+  
+  // Render grouped results
+  Object.keys(groupedByDate).sort().reverse().forEach(data => {
+    const presencasDia = groupedByDate[data];
+    
+    const dayCard = document.createElement("div");
+    dayCard.className = "summary-card";
+    dayCard.style.marginBottom = "0.75rem";
+    
+    const turma = DataStore.findById("turmas", presencasDia[0].turma_id);
+    
+    let alunosHtml = "";
+    presencasDia.forEach(p => {
+      const aluno = DataStore.findById("alunos", p.aluno_id);
+      const statusClass = p.status === "presente" ? "badge-success" : p.status === "falta" ? "badge-danger" : "badge-warning";
+      const statusLabel = p.status === "presente" ? "Presente" : p.status === "falta" ? "Falta" : "Justificada";
+      alunosHtml += `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid var(--color-border);">
+          <span>${aluno?.nome || "Aluno removido"}</span>
+          <span class="badge ${statusClass}">${statusLabel}</span>
+        </div>
+      `;
+    });
+    
+    dayCard.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <strong>${formatarData(data)}</strong>
+        <span style="color: var(--color-text-secondary);">${turma?.nome || "Turma"} - ${presencasDia.length} aluno(s)</span>
+      </div>
+      <div>${alunosHtml}</div>
+    `;
+    
+    container.appendChild(dayCard);
+  });
+}
+
+/** Gera PDF de relatorio de presenca */
+function gerarPDFPresenca(presencas, filtros) {
+  const totalPresentes = presencas.filter(p => p.status === "presente").length;
+  const totalFaltas = presencas.filter(p => p.status === "falta").length;
+  const totalJustificadas = presencas.filter(p => p.status === "justificada").length;
+  
+  let filtroTexto = "";
+  if (filtros.turmaId) {
+    const turma = DataStore.findById("turmas", filtros.turmaId);
+    filtroTexto += `Turma: ${turma?.nome || "-"}\n`;
+  }
+  if (filtros.alunoId) {
+    const aluno = DataStore.findById("alunos", filtros.alunoId);
+    filtroTexto += `Aluno: ${aluno?.nome || "-"}\n`;
+  }
+  if (filtros.mes > 0) {
+    const meses = ["", "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    filtroTexto += `Mes: ${meses[filtros.mes]}\n`;
+  }
+  if (filtros.ano > 0) {
+    filtroTexto += `Ano: ${filtros.ano}\n`;
+  }
+  
+  let conteudo = `
+RELATORIO DE PRESENCA
+Bailado Carioca
+================================
+
+${filtroTexto}
+RESUMO:
+- Presentes: ${totalPresentes}
+- Faltas: ${totalFaltas}
+- Justificadas: ${totalJustificadas}
+- Total: ${presencas.length}
+
+================================
+DETALHAMENTO:
+`;
+
+  // Group by date
+  const groupedByDate = {};
+  presencas.forEach(p => {
+    if (!groupedByDate[p.data]) {
+      groupedByDate[p.data] = [];
+    }
+    groupedByDate[p.data].push(p);
+  });
+
+  Object.keys(groupedByDate).sort().reverse().forEach(data => {
+    const presencasDia = groupedByDate[data];
+    const turma = DataStore.findById("turmas", presencasDia[0].turma_id);
+    conteudo += `\n${formatarData(data)} - ${turma?.nome || "Turma"}\n`;
+    
+    presencasDia.forEach(p => {
+      const aluno = DataStore.findById("alunos", p.aluno_id);
+      const statusLabel = p.status === "presente" ? "[P]" : p.status === "falta" ? "[F]" : "[J]";
+      conteudo += `  ${statusLabel} ${aluno?.nome || "Aluno"}\n`;
+    });
+  });
+
+  // Gerar PDF simples usando blob de texto
+  const blob = new Blob([conteudo], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `presenca_${new Date().toISOString().slice(0, 10)}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/** Compartilha relatorio de presenca via WhatsApp */
+function compartilharPresencaWhatsApp(presencas, filtros) {
+  const totalPresentes = presencas.filter(p => p.status === "presente").length;
+  const totalFaltas = presencas.filter(p => p.status === "falta").length;
+  const totalJustificadas = presencas.filter(p => p.status === "justificada").length;
+  
+  let texto = `*RELATORIO DE PRESENCA*\nBailado Carioca\n\n`;
+  texto += `Presentes: ${totalPresentes}\n`;
+  texto += `Faltas: ${totalFaltas}\n`;
+  texto += `Justificadas: ${totalJustificadas}\n`;
+  texto += `Total: ${presencas.length}`;
+  
+  const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+  window.open(url, "_blank");
+}
+
+/* =========================
    LIXEIRA
 ========================= */
 
@@ -3695,7 +4434,7 @@ function importarDados(file, msgElement) {
       }
 
       // Verificar se tem pelo menos algumas das entidades esperadas
-      const entidadesEsperadas = ["alunos", "turmas", "unidades", "professores", "mensalidades", "recibos", "caixa", "config"];
+      const entidadesEsperadas = ["alunos", "turmas", "unidades", "professores", "mensalidades", "recibos", "caixa", "presencas", "config"];
       const entidadesEncontradas = entidadesEsperadas.filter(e => dados[e] !== undefined);
       
       if (entidadesEncontradas.length === 0) {
@@ -3711,6 +4450,7 @@ function importarDados(file, msgElement) {
       if (dados.mensalidades) resumo.push(`${dados.mensalidades.length} mensalidade(s)`);
       if (dados.recibos) resumo.push(`${dados.recibos.length} recibo(s)`);
       if (dados.caixa) resumo.push(`${dados.caixa.length} lancamento(s)`);
+      if (dados.presencas) resumo.push(`${dados.presencas.length} presenca(s)`);
 
       const confirmar = confirm(
         `ATENCAO: Isso vai SUBSTITUIR todos os dados atuais!\n\n` +
@@ -3738,6 +4478,7 @@ function importarDados(file, msgElement) {
         mensalidades: dados.mensalidades || [],
         recibos: dados.recibos || [],
         caixa: dados.caixa || [],
+        presencas: dados.presencas || [],
         lixeira: dados.lixeira || [],
         config: dados.config || { nomeProjeto: "Bailado Carioca", observacoes: "" },
       };

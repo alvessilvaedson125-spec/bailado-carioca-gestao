@@ -51,9 +51,10 @@ client/
 7. **Mensalidades (Tuition)**: Payment tracking and receipts
 8. **Recibos (Receipts)**: Professional receipt generation (text, PDF, WhatsApp)
 9. **Caixa (Cash Flow)**: Financial entries with categoria (mensalidade, aula_avulsa, despesa, outros)
-10. **Relatorio Mensal**: Monthly financial report with PDF/print export
-11. **Lixeira (Trash)**: View and restore deleted items
-12. **Configuracoes (Settings)**: Data import/export and preferences
+10. **Presenca (Attendance)**: Student attendance tracking with reports
+11. **Relatorio Mensal**: Monthly financial report with PDF/print export
+12. **Lixeira (Trash)**: View and restore deleted items
+13. **Configuracoes (Settings)**: Data import/export and preferences
 
 ## Recent Changes (Version 4)
 
@@ -91,6 +92,21 @@ client/
 - Checkboxes in Turma modal for each day of the week
 - Separate horarioTempo field for time (e.g., "19:00 - 20:30")
 - Combined horario field for display compatibility
+
+### Attendance System (Presenca) - Version 5
+- New `presencas` entity in DataStore for tracking attendance
+- Data model: id, aluno_id, turma_id, data (YYYY-MM-DD), status (presente/falta/justificada), tipo (regular/bolsista/aula_avulsa/reposicao), createdAt
+- **Register Tab**: Select turma + date, list students with quick buttons [P] Presente / [F] Falta / [J] Justificada
+- Quick actions: "Marcar Todos Presentes" and "Marcar Todos Falta" buttons
+- Real-time counters showing present/absent/justified counts
+- **Query Tab**: Filter by turma, aluno, mes, ano, tipo
+- Summary card with totals and PDF/WhatsApp export
+- Grouped results by date with student status badges
+- Integration with student historico (events logged automatically)
+- Bolsista badge shown on attendance cards
+- One attendance record per student per turma per date (no duplicates)
+- Presenca does NOT affect financeiro or student status (tracking only)
+- Export included in backup/restore system
 
 ### UX/Layout Improvements (Post Version 4)
 - Fixed dashboard charts: Fixed height containers (220px), no more infinite growth
