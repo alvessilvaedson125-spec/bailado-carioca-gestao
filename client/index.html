@@ -1,10 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <meta name="description" content="Sistema de gestao para escola de danca Bailado Carioca" />
+        <meta name="theme-color" content="#1e293b" />
         <title>Bailado Carioca - Sistema de Gestao</title>
         <link rel="stylesheet" href="/style.css" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
             href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
             rel="stylesheet"
@@ -12,17 +16,17 @@
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     </head>
     <body>
-        <button class="sidebar-toggle" id="sidebar-toggle">=</button>
+        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Abrir menu">&#9776;</button>
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
         <div id="app">
-            <nav id="sidebar">
-                <div class="brand" style="text-align: center; padding: 1.5rem 1rem;">
-                    <img src="/logo.jpg" alt="Bailado Carioca" style="width: 100%; max-width: 200px; height: auto; filter: invert(1);">
+            <nav id="sidebar" aria-label="Menu principal">
+                <div class="brand" style="text-align: center;">
+                    <img src="/logo.jpg" alt="Bailado Carioca" style="width: 100%; max-width: 180px; height: auto; filter: invert(1);">
                 </div>
-                <ul id="menu">
+                <ul id="menu" role="navigation">
                     <!-- Menu items injected by JS -->
                 </ul>
-                <div id="theme-toggle" style="padding: 1rem 1.75rem; border-top: 1px solid rgba(255,255,255,.08); cursor: pointer; color: #94a3b8; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                <div id="theme-toggle" role="button" tabindex="0" aria-label="Alternar tema">
                     <span id="theme-icon">[Escuro]</span>
                     <span id="theme-text">Modo Escuro</span>
                 </div>
@@ -34,9 +38,9 @@
                     <div class="user-profile">Admin</div>
                 </header>
 
-                <div id="content-area">
+                <section id="content-area" aria-live="polite">
                     <!-- Page content injected by JS -->
-                </div>
+                </section>
             </main>
         </div>
 
