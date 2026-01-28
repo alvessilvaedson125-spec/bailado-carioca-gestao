@@ -268,6 +268,245 @@ function criarGridCards() {
   return grid;
 }
 
+/** Obtem dados financeiros mensais dos ultimos 6 meses para graficos */
+function obterDadosMensais() {
+  const hoje = new Date();
+  const meses = [];
+  const entradas = [];
+  const saidas = [];
+  const saldos = [];
+  
+  const nomesMeses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  
+  for (let i = 5; i >= 0; i--) {
+    const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+    const mes = data.getMonth();
+    const ano = data.getFullYear();
+    
+    meses.push(`${nomesMeses[mes]}/${ano.toString().slice(-2)}`);
+    
+    const lancamentosMes = DataStore.state.data.caixa.filter(c => {
+      if (c.status === "cancelado") return false;
+      const dataLanc = new Date(c.data);
+      return dataLanc.getMonth() === mes && dataLanc.getFullYear() === ano;
+    });
+    
+    const totalEntradas = lancamentosMes
+      .filter(c => c.tipo === "entrada")
+      .reduce((sum, c) => sum + (c.valor || 0), 0);
+    
+    const totalSaidas = lancamentosMes
+      .filter(c => c.tipo === "saida")
+      .reduce((sum, c) => sum + (c.valor || 0), 0);
+    
+    entradas.push(totalEntradas);
+    saidas.push(totalSaidas);
+    saldos.push(totalEntradas - totalSaidas);
+  }
+  
+  return { meses, entradas, saidas, saldos };
+}
+
+/** Conta alunos inadimplentes (mensalidade do mes anterior nao paga) */
+function contarInadimplentes() {
+  const hoje = new Date();
+  const mesAnterior = hoje.getMonth(); // 0-11, getMonth() retorna 0-11
+  const anoAnterior = mesAnterior === 0 ? hoje.getFullYear() - 1 : hoje.getFullYear();
+  const mesRef = mesAnterior === 0 ? 12 : mesAnterior;
+  const mesRefStr = String(mesRef).padStart(2, "0");
+  const anoRefStr = String(anoAnterior);
+  
+  const alunosAtivos = DataStore.state.data.alunos.filter(a => a.status === "ativo");
+  const inadimplentes = [];
+  
+  alunosAtivos.forEach(aluno => {
+    const mensalidadePaga = DataStore.state.data.mensalidades.find(m => 
+      m.aluno_id === aluno.id && 
+      m.mes === mesRefStr && 
+      m.ano === anoRefStr && 
+      m.status === "paga"
+    );
+    
+    if (!mensalidadePaga) {
+      inadimplentes.push({
+        aluno,
+        mesRef: `${mesRefStr}/${anoRefStr}`
+      });
+    }
+  });
+  
+  return inadimplentes;
+}
+
+/** Verifica se aluno esta inadimplente */
+function alunoInadimplente(alunoId) {
+  const hoje = new Date();
+  const mesAnterior = hoje.getMonth();
+  const anoAnterior = mesAnterior === 0 ? hoje.getFullYear() - 1 : hoje.getFullYear();
+  const mesRef = mesAnterior === 0 ? 12 : mesAnterior;
+  const mesRefStr = String(mesRef).padStart(2, "0");
+  const anoRefStr = String(anoAnterior);
+  
+  const mensalidadePaga = DataStore.state.data.mensalidades.find(m => 
+    m.aluno_id === alunoId && 
+    m.mes === mesRefStr && 
+    m.ano === anoRefStr && 
+    m.status === "paga"
+  );
+  
+  return !mensalidadePaga;
+}
+
+/** Obtem dados financeiros de um mes especifico */
+function obterDadosMes(mes, ano) {
+  const caixa = DataStore.state.data.caixa;
+  const movimentos = caixa.filter(c => {
+    if (c.status === "cancelado") return false;
+    const data = new Date(c.data);
+    return data.getMonth() + 1 === mes && data.getFullYear() === ano;
+  });
+  
+  const entradas = movimentos.filter(c => c.tipo === "entrada").reduce((sum, c) => sum + (c.valor || 0), 0);
+  const saidas = movimentos.filter(c => c.tipo === "saida").reduce((sum, c) => sum + (c.valor || 0), 0);
+  
+  return { entradas, saidas, saldo: entradas - saidas };
+}
+
+/** Adiciona evento ao historico do aluno */
+function adicionarEventoAluno(alunoId, evento) {
+  const aluno = DataStore.findById("alunos", alunoId);
+  if (!aluno) return;
+  
+  if (!aluno.historico) {
+    aluno.historico = [];
+  }
+  
+  aluno.historico.push({
+    data: new Date().toISOString(),
+    evento: evento
+  });
+  
+  DataStore.save();
+}
+
+/** Formata seta de comparacao */
+function formatarComparativo(atual, anterior) {
+  if (anterior === 0 && atual === 0) return { seta: "->", cor: "#64748b", texto: "Sem dados" };
+  if (anterior === 0) return { seta: "[+]", cor: "#16a34a", texto: "Novo" };
+  
+  const diff = atual - anterior;
+  const pct = Math.abs((diff / anterior) * 100).toFixed(0);
+  
+  if (diff > 0) return { seta: "[+]", cor: "#16a34a", texto: `+${pct}%` };
+  if (diff < 0) return { seta: "[-]", cor: "#dc2626", texto: `-${pct}%` };
+  return { seta: "[=]", cor: "#64748b", texto: "Estavel" };
+}
+
+/** Armazena instancias de graficos para destruicao posterior */
+let chartInstances = {
+  entradasSaidas: null,
+  saldo: null
+};
+
+/** Renderiza graficos do dashboard */
+function renderizarGraficos() {
+  const dados = obterDadosMensais();
+  
+  const ctxES = document.getElementById("chart-entradas-saidas");
+  const ctxSaldo = document.getElementById("chart-saldo");
+  
+  if (!ctxES || !ctxSaldo) return;
+  
+  if (chartInstances.entradasSaidas) {
+    chartInstances.entradasSaidas.destroy();
+  }
+  if (chartInstances.saldo) {
+    chartInstances.saldo.destroy();
+  }
+  
+  const isDark = document.body.classList.contains("dark-mode");
+  const textColor = isDark ? "#94a3b8" : "#64748b";
+  const gridColor = isDark ? "rgba(148, 163, 184, 0.1)" : "rgba(0, 0, 0, 0.05)";
+  
+  chartInstances.entradasSaidas = new Chart(ctxES, {
+    type: "bar",
+    data: {
+      labels: dados.meses,
+      datasets: [
+        {
+          label: "Entradas",
+          data: dados.entradas,
+          backgroundColor: "rgba(34, 197, 94, 0.7)",
+          borderColor: "rgb(34, 197, 94)",
+          borderWidth: 1,
+        },
+        {
+          label: "Saidas",
+          data: dados.saidas,
+          backgroundColor: "rgba(239, 68, 68, 0.7)",
+          borderColor: "rgb(239, 68, 68)",
+          borderWidth: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { color: textColor },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor },
+          grid: { color: gridColor },
+        },
+        y: {
+          ticks: { color: textColor },
+          grid: { color: gridColor },
+        },
+      },
+    },
+  });
+  
+  chartInstances.saldo = new Chart(ctxSaldo, {
+    type: "line",
+    data: {
+      labels: dados.meses,
+      datasets: [
+        {
+          label: "Saldo",
+          data: dados.saldos,
+          borderColor: "rgb(59, 130, 246)",
+          backgroundColor: "rgba(59, 130, 246, 0.1)",
+          fill: true,
+          tension: 0.3,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { color: textColor },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: textColor },
+          grid: { color: gridColor },
+        },
+        y: {
+          ticks: { color: textColor },
+          grid: { color: gridColor },
+        },
+      },
+    },
+  });
+}
+
 /** Gera número do recibo */
 function gerarNumeroRecibo() {
   const num = DataStore.state.data.recibos.length + 1;
@@ -458,32 +697,89 @@ function copiarTexto(texto) {
    RENDERIZADORES DE PÁGINA
 ========================= */
 const pagesRenderers = {
-  /** Dashboard com métricas */
+  /** Dashboard com métricas e graficos */
   dashboard() {
+    const inadimplentes = contarInadimplentes();
+    
     const grid = document.createElement("div");
     grid.className = "dashboard-cards";
 
     const cards = [
-      ["Alunos Ativos", DataStore.count("alunos")],
-      ["Alunos Trancados", DataStore.countTrancados()],
-      ["Turmas Ativas", DataStore.count("turmas")],
-      ["Unidades", DataStore.count("unidades")],
-      ["Professores", DataStore.count("professores")],
-      ["Mensalidades Pendentes", DataStore.countMensalidades("pendente")],
-      ["Saldo Atual", formatarReais(DataStore.saldoAtual())],
+      ["Alunos Ativos", DataStore.count("alunos"), null],
+      ["Alunos Trancados", DataStore.countTrancados(), null],
+      ["Turmas Ativas", DataStore.count("turmas"), null],
+      ["Unidades", DataStore.count("unidades"), null],
+      ["Professores", DataStore.count("professores"), null],
+      ["Mensalidades Pendentes", DataStore.countMensalidades("pendente"), null],
+      ["Saldo Atual", formatarReais(DataStore.saldoAtual()), null],
     ];
 
-    cards.forEach(([title, value]) => {
+    if (inadimplentes.length > 0) {
+      cards.push(["Alunos Inadimplentes", inadimplentes.length, "warning"]);
+    }
+
+    cards.forEach(([title, value, type]) => {
       const card = document.createElement("div");
       card.className = "summary-card";
+      if (type === "warning") {
+        card.style.borderLeft = "4px solid #f59e0b";
+        card.style.background = "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)";
+      }
       card.innerHTML = `
         <span class="card-title">${title}</span>
-        <span class="card-value">${value}</span>
+        <span class="card-value" ${type === "warning" ? 'style="color: #d97706;"' : ''}>${value}</span>
       `;
       grid.appendChild(card);
     });
 
     UI.content.appendChild(grid);
+
+    if (inadimplentes.length > 0) {
+      const alertSection = document.createElement("div");
+      alertSection.style.cssText = "margin-top: 1.5rem; padding: 1rem; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px;";
+      alertSection.innerHTML = `
+        <h3 style="margin: 0 0 0.75rem 0; color: #92400e; font-size: 1rem;">Alunos com Mensalidade Pendente</h3>
+        <ul style="margin: 0; padding-left: 1.25rem; color: #78350f; font-size: 0.9rem;">
+          ${inadimplentes.slice(0, 10).map(i => `<li>${i.aluno.nome} - Ref: ${i.mesRef}</li>`).join("")}
+          ${inadimplentes.length > 10 ? `<li style="color: #a16207;">... e mais ${inadimplentes.length - 10} aluno(s)</li>` : ""}
+        </ul>
+      `;
+      UI.content.appendChild(alertSection);
+    }
+
+    const chartSection = document.createElement("div");
+    chartSection.style.cssText = "margin-top: 2rem;";
+    chartSection.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0; font-size: 1.1rem; color: #374151;">Evolucao Financeira (ultimos 6 meses)</h3>
+        <button class="btn-secondary" id="toggle-charts" style="font-size: 0.8rem;">Mostrar Graficos</button>
+      </div>
+      <div id="charts-container" style="display: none; gap: 1.5rem;">
+        <div class="summary-card" style="padding: 1.5rem; margin-bottom: 1rem;">
+          <h4 style="margin: 0 0 1rem 0; font-size: 0.95rem; color: #64748b;">Entradas x Saidas</h4>
+          <canvas id="chart-entradas-saidas" height="200"></canvas>
+        </div>
+        <div class="summary-card" style="padding: 1.5rem;">
+          <h4 style="margin: 0 0 1rem 0; font-size: 0.95rem; color: #64748b;">Saldo Mensal</h4>
+          <canvas id="chart-saldo" height="200"></canvas>
+        </div>
+      </div>
+    `;
+    UI.content.appendChild(chartSection);
+
+    let chartsVisible = false;
+    const toggleBtn = document.getElementById("toggle-charts");
+    const chartsContainer = document.getElementById("charts-container");
+
+    toggleBtn.onclick = () => {
+      chartsVisible = !chartsVisible;
+      chartsContainer.style.display = chartsVisible ? "block" : "none";
+      toggleBtn.textContent = chartsVisible ? "Ocultar Graficos" : "Mostrar Graficos";
+      
+      if (chartsVisible && typeof Chart !== "undefined") {
+        renderizarGraficos();
+      }
+    };
   },
 
   alunos() {
@@ -583,18 +879,25 @@ function renderCardsAlunosAtivos(buscaNome) {
   alunos.forEach(aluno => {
     const turma = DataStore.findById("turmas", aluno.turma);
     const unidade = turma ? DataStore.findById("unidades", turma.unidade_id) : null;
+    const isInadimplente = alunoInadimplente(aluno.id);
 
     const card = document.createElement("div");
     card.className = "summary-card";
     card.style.cursor = "default";
+    if (isInadimplente) {
+      card.style.borderLeft = "4px solid #f59e0b";
+    }
     const dataMatriculaFormatada = aluno.dataMatricula 
       ? new Date(aluno.dataMatricula).toLocaleDateString("pt-BR")
       : "-";
 
     card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: start;">
+      <div style="display: flex; justify-content: space-between; align-items: start; gap: 0.5rem;">
         <strong style="font-size: 1.1rem;">${aluno.nome}</strong>
-        <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: #f0fdf4; color: #16a34a;">Ativo</span>
+        <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+          ${isInadimplente ? '<span style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: #fef3c7; color: #d97706;">Pendente</span>' : ''}
+          <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: #f0fdf4; color: #16a34a;">Ativo</span>
+        </div>
       </div>
       <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
         Tel: ${aluno.telefone || "Não informado"}<br>
@@ -604,12 +907,18 @@ function renderCardsAlunosAtivos(buscaNome) {
         Unidade: ${unidade?.nome || turma?.unidade || aluno.unidade || "-"}<br>
         Mensalidade: ${formatarReais(aluno.mensalidade)}<br>
         Tipo: ${aluno.tipoMatricula || aluno.tipo || "Normal"}<br>
-        Matrícula: ${dataMatriculaFormatada}
+        Matricula: ${dataMatriculaFormatada}
       </p>
       <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;"></div>
     `;
 
     const acoes = card.querySelector("div:last-child");
+
+    const btnHistorico = document.createElement("button");
+    btnHistorico.className = "btn-secondary";
+    btnHistorico.textContent = "Historico";
+    btnHistorico.onclick = () => abrirHistoricoAluno(aluno);
+    acoes.appendChild(btnHistorico);
 
     const btnTrancar = document.createElement("button");
     btnTrancar.className = "btn-secondary";
@@ -618,7 +927,7 @@ function renderCardsAlunosAtivos(buscaNome) {
       if (confirm("Trancar matricula deste aluno?")) {
         aluno.status = "trancado";
         aluno.dataTrancamento = new Date().toISOString();
-        DataStore.save();
+        adicionarEventoAluno(aluno.id, "Matricula trancada");
         UI.navigate("alunos");
       }
     };
@@ -637,7 +946,7 @@ function renderCardsAlunosAtivos(buscaNome) {
       if (confirm("Mover aluno para lixeira?")) {
         aluno.status = "excluido";
         aluno.dataExclusao = new Date().toISOString();
-        DataStore.save();
+        adicionarEventoAluno(aluno.id, "Aluno excluido");
         UI.navigate("alunos");
       }
     };
@@ -687,13 +996,19 @@ function renderTrancados() {
 
     const acoes = card.querySelector("div:last-child");
 
+    const btnHistorico = document.createElement("button");
+    btnHistorico.className = "btn-secondary";
+    btnHistorico.textContent = "Historico";
+    btnHistorico.onclick = () => abrirHistoricoAluno(aluno);
+    acoes.appendChild(btnHistorico);
+
     const btnReativar = document.createElement("button");
     btnReativar.className = "btn-primary";
     btnReativar.textContent = "Reativar";
     btnReativar.onclick = () => {
       aluno.status = "ativo";
       delete aluno.dataTrancamento;
-      DataStore.save();
+      adicionarEventoAluno(aluno.id, "Matricula reativada");
       UI.navigate("trancados");
     };
     acoes.appendChild(btnReativar);
@@ -705,7 +1020,7 @@ function renderTrancados() {
       if (confirm("Mover para lixeira? O aluno podera ser restaurado posteriormente.")) {
         aluno.status = "excluido";
         aluno.dataExclusao = new Date().toISOString();
-        DataStore.save();
+        adicionarEventoAluno(aluno.id, "Aluno excluido");
         UI.navigate("trancados");
       }
     };
@@ -716,6 +1031,49 @@ function renderTrancados() {
 
   container.appendChild(grid);
   UI.content.appendChild(container);
+}
+
+/** Abre modal com historico do aluno */
+function abrirHistoricoAluno(aluno) {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+  modal.style.maxWidth = "500px";
+
+  const historico = aluno.historico || [];
+  
+  let htmlEventos = "";
+  if (historico.length === 0) {
+    htmlEventos = '<p style="color: #64748b; text-align: center;">Nenhum evento registrado.</p>';
+  } else {
+    const eventosOrdenados = [...historico].sort((a, b) => new Date(b.data) - new Date(a.data));
+    htmlEventos = eventosOrdenados.map(e => `
+      <div style="display: flex; gap: 0.75rem; padding: 0.75rem; background: #f8fafc; border-radius: 6px; margin-bottom: 0.5rem;">
+        <div style="width: 3px; background: #3b82f6; border-radius: 2px;"></div>
+        <div>
+          <div style="font-weight: 500; color: #374151;">${e.evento}</div>
+          <div style="font-size: 0.8rem; color: #94a3b8;">${formatarData(e.data)} ${new Date(e.data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  modal.innerHTML = `
+    <h2 class="modal-title">Historico - ${aluno.nome}</h2>
+    
+    <div style="max-height: 400px; overflow-y: auto; margin-bottom: 1rem;">
+      ${htmlEventos}
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-btn-secondary">Fechar</button>
+    </div>
+  `;
+
+  modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
 }
 
 /** Modal para criar/editar aluno */
@@ -844,13 +1202,15 @@ function abrirModalAluno(alunoExistente = null) {
     if (isEdicao) {
       Object.assign(alunoExistente, dados);
     } else {
-      DataStore.state.data.alunos.push({
+      const novoAluno = {
         id: crypto.randomUUID(),
         ...dados,
         ativo: true,
         status: "ativo",
         dataMatricula: new Date().toISOString(),
-      });
+        historico: [{ data: new Date().toISOString(), evento: "Matricula criada" }]
+      };
+      DataStore.state.data.alunos.push(novoAluno);
     }
 
     DataStore.save();
@@ -1017,9 +1377,36 @@ function abrirModalTurma(turmaExistente = null) {
         </select>
       </div>
 
+      <div class="field" style="grid-column: span 2;">
+        <label>Dias da Semana</label>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.25rem;">
+          <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="dia-seg" ${turmaExistente?.diasSemana?.includes("seg") ? "checked" : ""}> Seg
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="dia-ter" ${turmaExistente?.diasSemana?.includes("ter") ? "checked" : ""}> Ter
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="dia-qua" ${turmaExistente?.diasSemana?.includes("qua") ? "checked" : ""}> Qua
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="dia-qui" ${turmaExistente?.diasSemana?.includes("qui") ? "checked" : ""}> Qui
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="dia-sex" ${turmaExistente?.diasSemana?.includes("sex") ? "checked" : ""}> Sex
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="dia-sab" ${turmaExistente?.diasSemana?.includes("sab") ? "checked" : ""}> Sab
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+            <input type="checkbox" id="dia-dom" ${turmaExistente?.diasSemana?.includes("dom") ? "checked" : ""}> Dom
+          </label>
+        </div>
+      </div>
+
       <div class="field">
-        <label>Horário</label>
-        <input id="horario" placeholder="Ex: Terça 19h" value="${turmaExistente?.horario || ""}">
+        <label>Horario</label>
+        <input id="horario" placeholder="Ex: 19:00 - 20:30" value="${turmaExistente?.horarioTempo || turmaExistente?.horario || ""}">
       </div>
 
       <div class="field">
@@ -1097,12 +1484,25 @@ function abrirModalTurma(turmaExistente = null) {
     const unidade = DataStore.findById("unidades", unidadeId);
     const monitoresSelecionados = Array.from(selectMonitores.selectedOptions).map(o => o.value);
 
+    const diasSelecionados = [];
+    ["seg", "ter", "qua", "qui", "sex", "sab", "dom"].forEach(dia => {
+      if (modal.querySelector(`#dia-${dia}`).checked) {
+        diasSelecionados.push(dia);
+      }
+    });
+    
+    const horarioTempo = modal.querySelector("#horario").value;
+
     const dados = {
       nome: nome,
       nivel: modal.querySelector("#nivel").value,
       unidade_id: unidadeId,
       unidade: unidade?.nome || "",
-      horario: modal.querySelector("#horario").value,
+      diasSemana: diasSelecionados,
+      horarioTempo: horarioTempo,
+      horario: diasSelecionados.length > 0 
+        ? diasSelecionados.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(", ") + (horarioTempo ? ` ${horarioTempo}` : "")
+        : horarioTempo,
       professor_id: selectProfessor.value || null,
       monitores_ids: monitoresSelecionados,
     };
@@ -1276,13 +1676,19 @@ function abrirModalUnidade(unidadeExistente = null) {
 /** Renderiza página de professores */
 function renderProfessores() {
   const header = document.createElement("div");
-  header.style.cssText = "margin-bottom: 1.5rem;";
+  header.style.cssText = "margin-bottom: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;";
 
   const btn = document.createElement("button");
   btn.className = "btn-primary";
   btn.textContent = "+ Novo Professor/Monitor";
   btn.onclick = () => abrirModalProfessor();
   header.appendChild(btn);
+
+  const btnRelatorio = document.createElement("button");
+  btnRelatorio.className = "btn-secondary";
+  btnRelatorio.textContent = "Ver Pagamentos do Mes";
+  btnRelatorio.onclick = () => abrirRelatorioPagamentosProfessores();
+  header.appendChild(btnRelatorio);
 
   UI.content.appendChild(header);
 
@@ -1312,6 +1718,11 @@ function renderCardsProfessores() {
       .filter(t => t.ativa !== false && (t.professor_id === prof.id || t.monitores_ids?.includes(prof.id)))
       .map(t => t.nome)
       .join(", ");
+    
+    const tipoPagLabels = { fixo: "Fixo/Mes", por_aluno: "Por Aluno", percentual: "Percentual" };
+    const pagamentoInfo = prof.tipoPagamento 
+      ? `${tipoPagLabels[prof.tipoPagamento] || prof.tipoPagamento}: ${prof.tipoPagamento === "percentual" ? prof.valorPagamento + "%" : formatarReais(prof.valorPagamento)}`
+      : "Nao configurado";
 
     const card = document.createElement("div");
     card.className = "summary-card";
@@ -1323,8 +1734,9 @@ function renderCardsProfessores() {
         </span>
       </div>
       <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
-        📞 ${prof.telefone || "Não informado"}<br>
-        🎓 Turmas: ${turmasVinculadas || "Nenhuma"}
+        Tel: ${prof.telefone || "Nao informado"}<br>
+        Turmas: ${turmasVinculadas || "Nenhuma"}<br>
+        Pagamento: ${pagamentoInfo}
       </p>
       <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;"></div>
     `;
@@ -1355,6 +1767,93 @@ function renderCardsProfessores() {
   container.appendChild(grid);
 }
 
+/** Abre relatorio de pagamentos dos professores */
+function abrirRelatorioPagamentosProfessores() {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+  modal.style.maxWidth = "600px";
+
+  const professores = DataStore.state.data.professores.filter(p => p.ativo !== false && p.tipoPagamento);
+  const hoje = new Date();
+  const meses = ["","Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const mesAtual = hoje.getMonth() + 1;
+  const anoAtual = hoje.getFullYear();
+  
+  let totalGeral = 0;
+  let htmlProfessores = "";
+  
+  if (professores.length === 0) {
+    htmlProfessores = '<p style="color: #64748b;">Nenhum professor com pagamento configurado.</p>';
+  } else {
+    professores.forEach(prof => {
+      const turmas = DataStore.state.data.turmas
+        .filter(t => t.ativa !== false && (t.professor_id === prof.id || t.monitores_ids?.includes(prof.id)));
+      
+      let valorCalculado = 0;
+      let detalhes = "";
+      
+      if (prof.tipoPagamento === "fixo") {
+        valorCalculado = prof.valorPagamento || 0;
+        detalhes = "Valor fixo mensal";
+      } else if (prof.tipoPagamento === "por_aluno") {
+        const totalAlunos = turmas.reduce((sum, t) => {
+          return sum + DataStore.state.data.alunos.filter(a => a.status === "ativo" && a.turma === t.id).length;
+        }, 0);
+        valorCalculado = totalAlunos * (prof.valorPagamento || 0);
+        detalhes = `${totalAlunos} aluno(s) x ${formatarReais(prof.valorPagamento)}`;
+      } else if (prof.tipoPagamento === "percentual") {
+        const totalMensalidades = turmas.reduce((sum, t) => {
+          const alunosTurma = DataStore.state.data.alunos.filter(a => a.status === "ativo" && a.turma === t.id);
+          return sum + alunosTurma.reduce((s, a) => s + (a.mensalidade || 0), 0);
+        }, 0);
+        valorCalculado = (totalMensalidades * (prof.valorPagamento || 0)) / 100;
+        detalhes = `${prof.valorPagamento}% de ${formatarReais(totalMensalidades)}`;
+      }
+      
+      totalGeral += valorCalculado;
+      
+      htmlProfessores += `
+        <div style="padding: 0.75rem; background: #f8fafc; border-radius: 6px; margin-bottom: 0.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong>${prof.nome}</strong>
+            <span style="color: #16a34a; font-weight: 600;">${formatarReais(valorCalculado)}</span>
+          </div>
+          <div style="font-size: 0.85rem; color: #64748b; margin-top: 0.25rem;">
+            ${prof.funcao} | ${detalhes}
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  modal.innerHTML = `
+    <h2 class="modal-title">Pagamentos Professores - ${meses[mesAtual]}/${anoAtual}</h2>
+    
+    <div style="max-height: 400px; overflow-y: auto; margin-bottom: 1rem;">
+      ${htmlProfessores}
+    </div>
+    
+    <div style="padding: 1rem; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 8px; text-align: center;">
+      <div style="font-size: 0.9rem; color: #166534;">Total a Pagar</div>
+      <div style="font-size: 1.5rem; font-weight: bold; color: #16a34a;">${formatarReais(totalGeral)}</div>
+    </div>
+    
+    <p style="margin-top: 1rem; font-size: 0.8rem; color: #94a3b8; text-align: center;">
+      * Valores calculados com base nos alunos ativos e configuracoes de pagamento.
+    </p>
+
+    <div class="modal-actions" style="margin-top: 1rem;">
+      <button class="modal-btn-secondary">Fechar</button>
+    </div>
+  `;
+
+  modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
 /** Modal para criar/editar professor */
 function abrirModalProfessor(profExistente = null) {
   const overlay = criarOverlay();
@@ -1373,7 +1872,7 @@ function abrirModalProfessor(profExistente = null) {
       </div>
 
       <div class="field">
-        <label>Função *</label>
+        <label>Funcao *</label>
         <select id="funcao">
           <option value="Professor" ${profExistente?.funcao === "Professor" ? "selected" : ""}>Professor</option>
           <option value="Monitor" ${profExistente?.funcao === "Monitor" ? "selected" : ""}>Monitor</option>
@@ -1383,6 +1882,21 @@ function abrirModalProfessor(profExistente = null) {
       <div class="field">
         <label>Telefone</label>
         <input id="telefone" placeholder="(00) 00000-0000" value="${profExistente?.telefone || ""}">
+      </div>
+
+      <div class="field">
+        <label>Tipo de Pagamento</label>
+        <select id="tipoPagamento">
+          <option value="" ${!profExistente?.tipoPagamento ? "selected" : ""}>Nenhum</option>
+          <option value="fixo" ${profExistente?.tipoPagamento === "fixo" ? "selected" : ""}>Valor Fixo/Mes</option>
+          <option value="por_aluno" ${profExistente?.tipoPagamento === "por_aluno" ? "selected" : ""}>Por Aluno</option>
+          <option value="percentual" ${profExistente?.tipoPagamento === "percentual" ? "selected" : ""}>Percentual da Turma</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Valor Pagamento (R$ ou %)</label>
+        <input id="valorPagamento" type="number" step="0.01" placeholder="0.00" value="${profExistente?.valorPagamento || ""}">
       </div>
     </div>
 
@@ -1398,7 +1912,7 @@ function abrirModalProfessor(profExistente = null) {
     const nome = modal.querySelector("#nome").value;
 
     if (!nome) {
-      alert("Nome é obrigatório!");
+      alert("Nome e obrigatorio!");
       return;
     }
 
@@ -1406,6 +1920,8 @@ function abrirModalProfessor(profExistente = null) {
       nome: nome,
       funcao: modal.querySelector("#funcao").value,
       telefone: modal.querySelector("#telefone").value,
+      tipoPagamento: modal.querySelector("#tipoPagamento").value || null,
+      valorPagamento: Number(modal.querySelector("#valorPagamento").value) || null,
     };
 
     if (isEdicao) {
@@ -1719,6 +2235,10 @@ function abrirModalPagamento(mensalidade) {
       valor: mensalidade.valor,
       forma_pagamento: formaPagamento,
     });
+
+    if (mensalidade.aluno_id) {
+      adicionarEventoAluno(mensalidade.aluno_id, `Mensalidade paga - ${mensalidade.mes}/${mensalidade.ano}`);
+    }
 
     DataStore.save();
     overlay.remove();
@@ -2668,23 +3188,60 @@ function gerarRelatorioMensal(mes, ano) {
 
   const meses = ["","Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
+  const mesAnterior = mes === 1 ? 12 : mes - 1;
+  const anoAnterior = mes === 1 ? ano - 1 : ano;
+  const dadosAnterior = obterDadosMes(mesAnterior, anoAnterior);
+  
+  const compEntradas = formatarComparativo(totalEntradas, dadosAnterior.entradas);
+  const compSaidas = formatarComparativo(totalSaidas, dadosAnterior.saidas);
+  const compSaldo = formatarComparativo(saldo, dadosAnterior.saldo);
+
   const summaryCards = document.createElement("div");
   summaryCards.className = "dashboard-cards";
   summaryCards.innerHTML = `
     <div class="summary-card" style="border-left: 4px solid #16a34a;">
       <h4>Total de Entradas</h4>
       <p style="font-size: 1.5rem; font-weight: bold; color: #16a34a;">${formatarReais(totalEntradas)}</p>
+      <span style="font-size: 0.8rem; color: ${compEntradas.cor};">${compEntradas.seta} ${compEntradas.texto}</span>
     </div>
     <div class="summary-card" style="border-left: 4px solid #dc2626;">
       <h4>Total de Saidas</h4>
       <p style="font-size: 1.5rem; font-weight: bold; color: #dc2626;">${formatarReais(totalSaidas)}</p>
+      <span style="font-size: 0.8rem; color: ${compSaidas.cor};">${compSaidas.seta} ${compSaidas.texto}</span>
     </div>
     <div class="summary-card" style="border-left: 4px solid #3b82f6;">
       <h4>Saldo do Mes</h4>
       <p style="font-size: 1.5rem; font-weight: bold; color: ${saldo >= 0 ? "#16a34a" : "#dc2626"};">${formatarReais(saldo)}</p>
+      <span style="font-size: 0.8rem; color: ${compSaldo.cor};">${compSaldo.seta} ${compSaldo.texto}</span>
     </div>
   `;
   container.appendChild(summaryCards);
+  
+  const mesesNome = ["","Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const comparativoSection = document.createElement("div");
+  comparativoSection.className = "summary-card";
+  comparativoSection.style.cssText = "margin-top: 1rem; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);";
+  comparativoSection.innerHTML = `
+    <h4 style="margin-bottom: 0.75rem; color: #475569;">Comparativo com ${mesesNome[mesAnterior]}/${anoAnterior}</h4>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; text-align: center;">
+      <div>
+        <div style="font-size: 0.85rem; color: #64748b;">Entradas</div>
+        <div style="font-weight: 600; color: ${compEntradas.cor};">${compEntradas.seta} ${compEntradas.texto}</div>
+        <div style="font-size: 0.75rem; color: #94a3b8;">Anterior: ${formatarReais(dadosAnterior.entradas)}</div>
+      </div>
+      <div>
+        <div style="font-size: 0.85rem; color: #64748b;">Saidas</div>
+        <div style="font-weight: 600; color: ${compSaidas.cor};">${compSaidas.seta} ${compSaidas.texto}</div>
+        <div style="font-size: 0.75rem; color: #94a3b8;">Anterior: ${formatarReais(dadosAnterior.saidas)}</div>
+      </div>
+      <div>
+        <div style="font-size: 0.85rem; color: #64748b;">Saldo</div>
+        <div style="font-weight: 600; color: ${compSaldo.cor};">${compSaldo.seta} ${compSaldo.texto}</div>
+        <div style="font-size: 0.75rem; color: #94a3b8;">Anterior: ${formatarReais(dadosAnterior.saldo)}</div>
+      </div>
+    </div>
+  `;
+  container.appendChild(comparativoSection);
 
   const detalhes = document.createElement("div");
   detalhes.className = "summary-card";
