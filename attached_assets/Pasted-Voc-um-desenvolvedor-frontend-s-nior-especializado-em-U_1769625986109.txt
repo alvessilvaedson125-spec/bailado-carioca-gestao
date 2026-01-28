@@ -1,0 +1,96 @@
+Você é um desenvolvedor frontend sênior, especializado em UX/UI, identidade visual e isolamento de estilos CSS.
+
+ATENÇÃO: ESTE PROMPT CORRIGE UM ERRO ANTERIOR DE IDENTIDADE VISUAL.
+
+O sistema de gestão do Bailado Carioca possui uma LOGO OFICIAL fornecida pelo usuário (arquivo existente, ex: /logo.png).
+Essa logo NÃO pode ser alterada, redesenhada, estilizada globalmente ou substituída.
+
+---
+
+## ⚠️ REGRAS ABSOLUTAS (NÃO NEGOCIÁVEIS)
+- USAR EXCLUSIVAMENTE a logo oficial fornecida pelo usuário
+- NÃO criar logo nova
+- NÃO estilizar ou alterar a logo global do sistema
+- NÃO modificar header, sidebar, cards ou qualquer outro local onde a logo já é usada
+- NÃO aplicar efeitos diretamente na imagem da logo global
+- NÃO usar IA para gerar símbolo, ícone ou logo alternativa
+- NÃO mudar cores, proporções ou formato da logo
+
+---
+
+## 🎯 OBJETIVO
+Utilizar a LOGO OFICIAL do Bailado Carioca:
+- APENAS como BACKGROUND visual da TELA DE ABERTURA (welcome screen)
+- De forma isolada
+- Sem impactar o restante do sistema
+
+---
+
+## 🧱 IMPLEMENTAÇÃO CORRETA (OBRIGATÓRIA)
+
+### 1️⃣ Fonte da imagem
+- Usar exatamente o arquivo existente:
+  - ex: `/logo.png`
+- Não duplicar nem substituir esse arquivo
+- Não alterar o arquivo original
+
+### 2️⃣ Uso da logo na welcome screen
+- A logo deve ser usada como:
+  - background-image
+  - OU pseudo-elemento (::before / ::after)
+- Nunca como `<img>` reutilizado
+
+Exemplo conceitual:
+- background-image: url("/logo.png")
+- background-size: contain ou cover
+- background-position: center
+- background-repeat: no-repeat
+
+---
+
+## 🎨 LEGIBILIDADE (OBRIGATÓRIA)
+- Aplicar overlay escuro/translúcido sobre a logo
+- OU blur leve
+- Garantir que o texto e botão sejam sempre legíveis
+- A logo pode ocupar grande parte da tela, mas NÃO competir com o texto
+
+---
+
+## 🚨 FALLBACK (SOMENTE SE A LOGO NÃO PUDER SER USADA)
+⚠️ ESTE CASO É EXCEPCIONAL ⚠️
+
+Somente se houver impedimento técnico real para usar a imagem fornecida:
+
+- Exibir as iniciais **“BC”**
+- Fonte elegante, simples e profissional
+- Sem símbolo gráfico
+- Sem criação de marca nova
+- Apenas texto tipográfico
+
+📌 A preferência ABSOLUTA é usar a logo oficial fornecida.
+
+---
+
+## 🛡️ ISOLAMENTO TOTAL
+- Toda estilização deve estar contida em:
+  - `.welcome-screen`
+  - ou `#welcomeScreen`
+- Nenhum seletor global (`img`, `.logo`, `.brand`, `svg`) pode ser alterado
+- Nenhuma regra CSS pode vazar para fora da tela de abertura
+
+---
+
+## 📌 CRITÉRIOS DE ACEITE
+A implementação está correta se:
+- A logo oficial aparece normalmente no header/sidebar como antes
+- A welcome screen usa a logo oficial SOMENTE como fundo
+- Nenhuma nova logo foi criada
+- Nenhuma identidade visual foi alterada
+- O sistema mantém coerência visual total
+
+---
+
+🚨 IMPORTANTE:
+Este sistema tem identidade visual definida.
+Respeite rigorosamente a marca existente.
+Este prompt é corretivo e restritivo.
