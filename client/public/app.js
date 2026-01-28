@@ -1258,9 +1258,9 @@ function renderBolsistas() {
       <div id="bolsistas-chips" data-testid="container-bolsistas-chips" style="display: flex; flex-wrap: wrap; gap: 0.5rem; min-height: 40px; padding: 0.75rem; background: var(--bg-card, #fff); border: 1px solid #e2e8f0; border-radius: 4px;"></div>
     </div>
     
-    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem;">
       <select id="bolsista-busca" data-testid="select-add-bolsista" style="flex: 1; min-width: 200px; padding: 0.5rem;">
-        <option value="">Buscar aluno para conceder bolsa...</option>
+        <option value="">Buscar aluno existente...</option>
       </select>
       <select id="bolsista-tipo-rapido" data-testid="select-tipo-bolsa-rapido" style="padding: 0.5rem; min-width: 120px;">
         <option value="integral">Integral</option>
@@ -1269,6 +1269,9 @@ function renderBolsistas() {
       </select>
       <button type="button" id="btn-add-bolsista" data-testid="button-add-bolsista" class="btn-primary" style="white-space: nowrap;">Conceder</button>
       <button type="button" id="btn-clear-bolsistas" data-testid="button-clear-all-bolsistas" class="btn-secondary" style="white-space: nowrap; color: #dc2626;">Remover Todas</button>
+    </div>
+    <div style="border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+      <button type="button" id="btn-novo-bolsista" data-testid="button-new-bolsista" class="btn-primary" style="width: 100%;">+ Novo Bolsista (cadastro direto)</button>
     </div>
   `;
   UI.content.appendChild(gestaoArea);
@@ -1331,6 +1334,8 @@ function renderBolsistas() {
     renderCardsBolsistas();
     alert("Todas as bolsas foram removidas.");
   };
+  
+  document.getElementById("btn-novo-bolsista").onclick = () => abrirModalNovoBolsista();
   
   // ========== FILTROS ==========
   const header = document.createElement("div");
@@ -1572,6 +1577,115 @@ function formatarTipoBolsa(tipo) {
     apoio: "Apoio"
   };
   return tipos[tipo] || tipo;
+}
+
+/** Modal para cadastrar novo bolsista (cria aluno automaticamente) */
+function abrirModalNovoBolsista() {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+  
+  const turmas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
+  
+  modal.innerHTML = `
+    <h2 class="modal-title">Novo Bolsista</h2>
+    <p style="color: var(--color-text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">Cadastre um bolsista diretamente. Um aluno sera criado automaticamente.</p>
+    
+    <div class="modal-grid">
+      <div class="field">
+        <label>Nome *</label>
+        <input id="novo-bolsista-nome" data-testid="input-new-bolsista-nome" placeholder="Nome completo do bolsista" required>
+      </div>
+      
+      <div class="field">
+        <label>Telefone</label>
+        <input id="novo-bolsista-telefone" data-testid="input-new-bolsista-telefone" placeholder="(00) 00000-0000">
+      </div>
+      
+      <div class="field">
+        <label>Turma</label>
+        <select id="novo-bolsista-turma" data-testid="select-new-bolsista-turma">
+          <option value="">Sem turma (atribuir depois)</option>
+          ${turmas.map(t => `<option value="${t.id}">${t.nome}</option>`).join("")}
+        </select>
+      </div>
+      
+      <div class="field">
+        <label>Tipo de Bolsa *</label>
+        <select id="novo-bolsista-tipo" data-testid="select-new-bolsista-tipo">
+          <option value="integral">Integral (100%)</option>
+          <option value="parcial">Parcial</option>
+          <option value="apoio">Apoio</option>
+        </select>
+      </div>
+      
+      <div class="field full-width">
+        <label>Observacao</label>
+        <textarea id="novo-bolsista-obs" data-testid="input-new-bolsista-obs" rows="3" placeholder="Motivo da bolsa, condicoes, etc."></textarea>
+      </div>
+    </div>
+    
+    <div class="modal-actions">
+      <button class="modal-btn-secondary" data-testid="button-cancel-new-bolsista">Cancelar</button>
+      <button class="modal-btn-primary" data-testid="button-save-new-bolsista">Cadastrar Bolsista</button>
+    </div>
+  `;
+  
+  modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
+  
+  modal.querySelector(".modal-btn-primary").onclick = () => {
+    const nome = modal.querySelector("#novo-bolsista-nome").value.trim();
+    const telefone = modal.querySelector("#novo-bolsista-telefone").value.trim();
+    const turmaId = modal.querySelector("#novo-bolsista-turma").value;
+    const tipo = modal.querySelector("#novo-bolsista-tipo").value;
+    const obs = modal.querySelector("#novo-bolsista-obs").value.trim();
+    
+    if (!nome) {
+      alert("O nome e obrigatorio!");
+      return;
+    }
+    
+    // Criar aluno automaticamente
+    const novoAluno = {
+      id: crypto.randomUUID(),
+      nome: nome,
+      telefone: telefone || "",
+      email: "",
+      cpf: "",
+      turma: turmaId || null,
+      unidade: null,
+      tipoMatricula: "bolsista",
+      mensalidade: 0,
+      status: "ativo",
+      historico: [],
+      bolsa: {
+        ativa: true,
+        tipo: tipo,
+        observacao: obs,
+        concedidaEm: new Date().toISOString()
+      },
+      createdAt: new Date().toISOString()
+    };
+    
+    DataStore.state.data.alunos.push(novoAluno);
+    DataStore.save();
+    
+    // Adicionar eventos ao historico
+    adicionarEventoAluno(novoAluno.id, "Aluno cadastrado como bolsista");
+    adicionarEventoAluno(novoAluno.id, `Bolsa concedida - Tipo: ${formatarTipoBolsa(tipo)}`);
+    
+    overlay.remove();
+    
+    // Atualizar interface
+    atualizarDropdownBolsistas();
+    renderBolsistasChips();
+    renderCardsBolsistas();
+    
+    alert(`Bolsista "${nome}" cadastrado com sucesso!`);
+  };
+  
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
 }
 
 /** Modal para conceder bolsa a um aluno */
