@@ -60,6 +60,11 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Health check endpoint for deployments
+  app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok", env: process.env.NODE_ENV });
+  });
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
