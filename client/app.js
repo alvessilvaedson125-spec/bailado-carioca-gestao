@@ -190,6 +190,23 @@ const Auth = {
     const perfil = this.getPerfilAtual();
     return perfil === "admin" ? "dashboard" : "alunos";
   },
+
+  /** Carrega usuarios do localStorage ou usa padrao */
+  carregarUsuarios() {
+    const raw = localStorage.getItem("bailadoUsuarios");
+    if (raw) {
+      try {
+        this.usuarios = JSON.parse(raw);
+      } catch (e) {
+        console.error("Erro ao carregar usuarios:", e);
+      }
+    }
+  },
+
+  /** Salva usuarios no localStorage */
+  salvarUsuarios() {
+    localStorage.setItem("bailadoUsuarios", JSON.stringify(this.usuarios));
+  },
 };
 
 /* =========================
@@ -203,6 +220,7 @@ const UI = {
   init() {
     DataStore.load();
     DataStore.migrateAlunosStatus();
+    Auth.carregarUsuarios();
     this.initTheme();
     this.initAuth();
   },
@@ -4915,6 +4933,31 @@ function renderConfig() {
 
     <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e5e7eb;">
 
+    <h3 style="margin-bottom: 1rem;">Seguranca / Alterar Senha</h3>
+    <p style="color: #6b7280; margin-bottom: 1rem; font-size: 0.9rem;">
+      Altere a senha do usuario logado. A nova senha sera valida no proximo login.
+    </p>
+
+    <div class="field" style="margin-bottom: 1rem;">
+      <label>Senha Atual</label>
+      <input type="password" id="senhaAtual" style="width: 100%; padding: 0.5rem;" placeholder="Digite sua senha atual">
+    </div>
+
+    <div class="field" style="margin-bottom: 1rem;">
+      <label>Nova Senha</label>
+      <input type="password" id="novaSenha" style="width: 100%; padding: 0.5rem;" placeholder="Digite a nova senha">
+    </div>
+
+    <div class="field" style="margin-bottom: 1rem;">
+      <label>Confirmar Nova Senha</label>
+      <input type="password" id="confirmarSenha" style="width: 100%; padding: 0.5rem;" placeholder="Confirme a nova senha">
+    </div>
+
+    <button class="btn-primary" id="btnAlterarSenha" data-testid="button-change-password">Alterar Senha</button>
+    <span id="msgSenha" style="margin-left: 1rem; display: none;"></span>
+
+    <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e5e7eb;">
+
     <h3 style="margin-bottom: 1rem;">Backup e Restauracao</h3>
     <p style="color: #6b7280; margin-bottom: 1rem; font-size: 0.9rem;">
       Exporte seus dados para um arquivo JSON para fazer backup. Importe um arquivo de backup para restaurar os dados.
@@ -4944,6 +4987,76 @@ function renderConfig() {
     const msg = container.querySelector("#msgSalvo");
     msg.style.display = "inline";
     setTimeout(() => msg.style.display = "none", 2000);
+  };
+
+  // Alterar senha
+  container.querySelector("#btnAlterarSenha").onclick = () => {
+    const senhaAtual = container.querySelector("#senhaAtual").value;
+    const novaSenha = container.querySelector("#novaSenha").value;
+    const confirmarSenha = container.querySelector("#confirmarSenha").value;
+    const msgSenha = container.querySelector("#msgSenha");
+
+    // Limpar mensagem anterior
+    msgSenha.style.display = "none";
+
+    // Validacoes
+    if (!senhaAtual || !novaSenha || !confirmarSenha) {
+      msgSenha.textContent = "Preencha todos os campos";
+      msgSenha.style.color = "#dc2626";
+      msgSenha.style.display = "inline";
+      return;
+    }
+
+    // Obter sessao atual
+    const sessao = Auth.getSessao();
+    if (!sessao) {
+      msgSenha.textContent = "Sessao invalida. Faca login novamente.";
+      msgSenha.style.color = "#dc2626";
+      msgSenha.style.display = "inline";
+      return;
+    }
+
+    // Verificar senha atual
+    const usuario = Auth.usuarios.find(u => u.usuario === sessao.usuario);
+    if (!usuario || usuario.senha !== senhaAtual) {
+      msgSenha.textContent = "Senha atual incorreta";
+      msgSenha.style.color = "#dc2626";
+      msgSenha.style.display = "inline";
+      return;
+    }
+
+    // Verificar confirmacao
+    if (novaSenha !== confirmarSenha) {
+      msgSenha.textContent = "As senhas nao conferem";
+      msgSenha.style.color = "#dc2626";
+      msgSenha.style.display = "inline";
+      return;
+    }
+
+    // Verificar tamanho minimo
+    if (novaSenha.length < 4) {
+      msgSenha.textContent = "A senha deve ter pelo menos 4 caracteres";
+      msgSenha.style.color = "#dc2626";
+      msgSenha.style.display = "inline";
+      return;
+    }
+
+    // Atualizar senha no array de usuarios
+    usuario.senha = novaSenha;
+
+    // Salvar usuarios no localStorage
+    Auth.salvarUsuarios();
+
+    // Limpar campos
+    container.querySelector("#senhaAtual").value = "";
+    container.querySelector("#novaSenha").value = "";
+    container.querySelector("#confirmarSenha").value = "";
+
+    // Sucesso
+    msgSenha.textContent = "Senha alterada com sucesso!";
+    msgSenha.style.color = "#16a34a";
+    msgSenha.style.display = "inline";
+    setTimeout(() => msgSenha.style.display = "none", 3000);
   };
 
   // Exportar dados

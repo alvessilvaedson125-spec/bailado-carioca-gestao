@@ -1,0 +1,87 @@
+Você é um desenvolvedor frontend sênior, especializado em UX/UI profissional, aplicações em JavaScript puro e controle de acesso local.
+
+O sistema de gestão do Bailado Carioca já possui:
+- Tela de abertura (welcome screen)
+- Login simples com usuário e senha (localStorage)
+- Controle de acesso por perfil (admin / operacional)
+
+Esta tarefa é um REFINAMENTO, não uma reimplementação.
+
+---
+
+## ⚠️ REGRAS ABSOLUTAS
+- NÃO refatorar o sistema de login existente
+- NÃO alterar lógica de autenticação já implementada
+- NÃO alterar estrutura de dados atual, apenas estender se necessário
+- NÃO introduzir backend ou bibliotecas externas
+- JavaScript puro + localStorage
+- Manter compatibilidade com modo claro e escuro
+- Manter acessibilidade e legibilidade
+
+---
+
+## 🎯 PARTE 1 — REFINAR TELA DE ABERTURA (WELCOME SCREEN)
+
+Ajustar a tela de abertura para:
+
+### Layout visual
+- Logo do Bailado Carioca como **imagem de fundo**
+- Logo deve ocupar grande parte da tela (quase full-screen)
+- Aplicar:
+  - overlay escuro translúcido (ex: rgba)
+  - ou blur leve
+para garantir **legibilidade do texto**
+
+### Conteúdo visível
+- Texto centralizado:
+  “Bem-vindo ao Sistema de Gestão do Bailado Carioca”
+- Botão principal: “Entrar no sistema”
+
+📌 A logo NÃO deve competir com o texto  
+📌 Priorizar estética elegante e profissional  
+📌 Efeito 3D na logo é opcional (somente se simples e leve)
+
+---
+
+## 🎯 PARTE 2 — ALTERAÇÃO DE SENHA (CONFIGURAÇÕES)
+
+Adicionar em **Configurações** uma seção chamada:
+
+### 🔐 “Segurança / Alterar Senha”
+
+Funcionalidades:
+- Campo senha atual
+- Campo nova senha
+- Campo confirmar nova senha
+- Validação:
+  - senha atual correta
+  - nova senha = confirmação
+- Salvar nova senha no localStorage
+- Feedback visual de sucesso ou erro
+
+📌 NÃO criar novo usuário  
+📌 Alteração válida apenas para o usuário logado  
+📌 Não exigir criptografia avançada (contexto local)
+
+---
+
+## 🔄 COMPORTAMENTO ESPERADO
+
+- Usuário logado pode trocar a própria senha
+- Logout mantém a nova senha válida
+- Não impactar outros usuários
+- Não impactar dados do sistema
+
+---
+
+## 🛠️ ENTREGA ESPERADA
+- Refinamento visual elegante da tela de abertura
+- Logo em destaque sem perder legibilidade
+- Fluxo de alteração de senha simples e seguro
+- Código incremental, claro e bem organizado
+- Zero impacto nas funcionalidades existentes
+
+🚨 IMPORTANTE:
+Este sistema é de uso interno.
+Priorize experiência, clareza e controle básico de acesso.
+Evite soluções complexas desnecessárias.
