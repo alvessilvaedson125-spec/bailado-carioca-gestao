@@ -308,6 +308,7 @@ body {
   flex-direction: column;
   gap: 0.35rem;
   transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+  min-width: 280px;
 }
 
 .summary-card:hover {

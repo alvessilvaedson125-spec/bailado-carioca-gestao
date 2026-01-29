@@ -1236,7 +1236,8 @@ function renderCardsAlunosAtivos(buscaNome) {
 
 /** Verifica se aluno e bolsista */
 function isBolsista(aluno) {
-  return aluno?.bolsa?.ativa === true;
+  // Bolsista se bolsa esta ativa OU tipoMatricula === "bolsista"
+  return aluno?.bolsa?.ativa === true || aluno?.tipoMatricula === "bolsista";
 }
 
 /** Obtem array de turmas_ids do aluno (migrando turma unica se necessario) */
@@ -1560,25 +1561,26 @@ function renderCardsBolsistas() {
     
     const card = document.createElement("div");
     card.className = "summary-card";
+    card.style.cssText = "min-width: 280px; padding: 1.25rem;";
     card.innerHTML = `
-      <div class="card-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
-        <div>
-          <strong style="font-size: 1.1rem;">${aluno.nome}</strong>
-          <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem; flex-wrap: wrap;">
+      <div class="card-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+        <div style="width: 100%;">
+          <strong style="font-size: 1.15rem; display: block; margin-bottom: 0.5rem;">${aluno.nome}</strong>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <span class="badge badge-info">Bolsista</span>
             <span class="badge badge-muted">${formatarTipoBolsa(tipoBolsa)}</span>
             <span class="badge ${statusClass}">${statusLabel}</span>
           </div>
         </div>
       </div>
-      <div class="card-body" style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 0.75rem;">
-        <div style="margin: 0.25rem 0;">
-          <span style="font-weight: 500;">Turmas:</span>
-          <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem;">${turmasHtml}</div>
+      <div class="card-body" style="color: var(--color-text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+        <div style="margin: 0.5rem 0;">
+          <span style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Turmas:</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.35rem;">${turmasHtml}</div>
         </div>
-        ${aluno.bolsa?.observacao ? `<p style="margin: 0.25rem 0; font-style: italic;">"${aluno.bolsa.observacao}"</p>` : ""}
+        ${aluno.bolsa?.observacao ? `<p style="margin: 0.75rem 0 0 0; font-style: italic; padding: 0.5rem; background: var(--color-bg-subtle, #f8f9fa); border-radius: 4px;">"${aluno.bolsa.observacao}"</p>` : ""}
       </div>
-      <div class="card-footer" style="display: flex; gap: 0.5rem; flex-wrap: wrap;"></div>
+      <div class="card-footer" style="display: flex; gap: 0.5rem; flex-wrap: wrap; border-top: 1px solid var(--color-border); padding-top: 0.75rem;"></div>
     `;
     
     const footer = card.querySelector(".card-footer");
@@ -1703,12 +1705,21 @@ function abrirModalNovoBolsista() {
       if (!t) return;
       
       const chip = document.createElement("span");
-      chip.style.cssText = "display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.75rem; background: #e0f2fe; color: #0369a1; border-radius: 4px; font-size: 0.85rem;";
-      chip.innerHTML = `
-        <span>${t.nome} - ${t.nivel || "Sem nivel"}</span>
-        <button type="button" style="background: none; border: none; cursor: pointer; color: #0369a1; font-weight: bold; padding: 0 2px; font-size: 1rem;" title="Remover">X</button>
-      `;
-      chip.querySelector("button").onclick = () => {
+      chip.style.cssText = "display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #e0f2fe; color: #0369a1; border-radius: 6px; font-size: 0.9rem; margin-bottom: 0.25rem;";
+      
+      const chipText = document.createElement("span");
+      chipText.textContent = `${t.nome} - ${t.nivel || "Sem nivel"}`;
+      chip.appendChild(chipText);
+      
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.style.cssText = "background: #dc2626; border: none; cursor: pointer; color: #fff; font-weight: bold; padding: 2px 6px; font-size: 0.75rem; border-radius: 3px; margin-left: 0.25rem;";
+      removeBtn.title = "Remover turma";
+      removeBtn.textContent = "X";
+      chip.appendChild(removeBtn);
+      
+      removeBtn.onclick = (e) => {
+        e.stopPropagation();
         turmasSelecionadas = turmasSelecionadas.filter(id => id !== tid);
         renderTurmasChipsNovo();
         atualizarSelectTurmasNovo();
@@ -1970,14 +1981,24 @@ function abrirModalEditarBolsa(aluno) {
       if (!turma) return;
       
       const chip = document.createElement("span");
-      chip.style.cssText = "display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.75rem; background: #e0f2fe; color: #0369a1; border-radius: 4px; font-size: 0.85rem;";
+      chip.style.cssText = "display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: #e0f2fe; color: #0369a1; border-radius: 6px; font-size: 0.9rem; margin-bottom: 0.25rem;";
       chip.setAttribute("data-testid", `chip-turma-${tid}`);
-      chip.innerHTML = `
-        <span>${turma.nome} - ${turma.nivel || "Sem nivel"}</span>
-        <button type="button" data-id="${tid}" data-testid="button-remove-turma-${tid}" style="background: none; border: none; cursor: pointer; color: #0369a1; font-weight: bold; padding: 0 2px; font-size: 1rem;" title="Remover turma">X</button>
-      `;
       
-      chip.querySelector("button").onclick = () => {
+      const chipText = document.createElement("span");
+      chipText.textContent = `${turma.nome} - ${turma.nivel || "Sem nivel"}`;
+      chip.appendChild(chipText);
+      
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.setAttribute("data-id", tid);
+      removeBtn.setAttribute("data-testid", `button-remove-turma-${tid}`);
+      removeBtn.style.cssText = "background: #dc2626; border: none; cursor: pointer; color: #fff; font-weight: bold; padding: 2px 6px; font-size: 0.75rem; border-radius: 3px; margin-left: 0.25rem;";
+      removeBtn.title = "Remover turma";
+      removeBtn.textContent = "X";
+      chip.appendChild(removeBtn);
+      
+      removeBtn.onclick = (e) => {
+        e.stopPropagation();
         turmasVinculadas = turmasVinculadas.filter(id => id !== tid);
         renderTurmasChips();
         atualizarDropdownTurmas();
