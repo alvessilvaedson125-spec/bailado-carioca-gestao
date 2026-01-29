@@ -2153,74 +2153,186 @@ function renderTrancados() {
   const container = document.createElement("div");
   container.id = "trancados-container";
 
-  const alunos = DataStore.state.data.alunos.filter(a => a.status === "trancado");
+  // Exclui bolsistas conforme regra do sistema
+  const todosTrancados = DataStore.state.data.alunos.filter(a => 
+    a.status === "trancado" && !isBolsista(a)
+  );
+  const unidades = DataStore.state.data.unidades.filter(u => u.ativa !== false);
+  const turmas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
 
-  if (alunos.length === 0) {
-    container.innerHTML = '<p style="color: #64748b;">Nenhum aluno trancado.</p>';
-    UI.content.appendChild(container);
-    return;
-  }
+  // Filtros
+  const filtrosDiv = document.createElement("div");
+  filtrosDiv.className = "filtros-trancados";
+  filtrosDiv.style.cssText = "display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center;";
 
+  // Select Unidade
+  const selectUnidade = document.createElement("select");
+  selectUnidade.id = "filtro-unidade-trancados";
+  selectUnidade.className = "form-input";
+  selectUnidade.style.cssText = "min-width: 180px; max-width: 220px;";
+  selectUnidade.setAttribute("data-testid", "select-unidade-trancados");
+  selectUnidade.innerHTML = `<option value="">Todas as unidades</option>` + 
+    unidades.map(u => `<option value="${u.id}">${u.nome}</option>`).join("");
+
+  // Select Turma
+  const selectTurma = document.createElement("select");
+  selectTurma.id = "filtro-turma-trancados";
+  selectTurma.className = "form-input";
+  selectTurma.style.cssText = "min-width: 180px; max-width: 220px;";
+  selectTurma.setAttribute("data-testid", "select-turma-trancados");
+  selectTurma.innerHTML = `<option value="">Todas as turmas</option>`;
+
+  // Input Busca Nome
+  const inputNome = document.createElement("input");
+  inputNome.type = "text";
+  inputNome.id = "filtro-nome-trancados";
+  inputNome.className = "form-input";
+  inputNome.placeholder = "Buscar por nome...";
+  inputNome.style.cssText = "min-width: 180px; max-width: 250px;";
+  inputNome.setAttribute("data-testid", "input-nome-trancados");
+
+  // Contagem
+  const contagem = document.createElement("span");
+  contagem.id = "contagem-trancados";
+  contagem.style.cssText = "color: #64748b; font-size: 0.9rem; margin-left: auto;";
+
+  filtrosDiv.appendChild(selectUnidade);
+  filtrosDiv.appendChild(selectTurma);
+  filtrosDiv.appendChild(inputNome);
+  filtrosDiv.appendChild(contagem);
+
+  // Grid para cards
   const grid = criarGridCards();
+  grid.id = "grid-trancados";
 
-  alunos.forEach(aluno => {
-    const turma = DataStore.findById("turmas", aluno.turma);
-    const dataTrancamento = aluno.dataTrancamento 
-      ? new Date(aluno.dataTrancamento).toLocaleDateString("pt-BR") 
-      : "N/A";
-
-    const card = document.createElement("div");
-    card.className = "summary-card";
-    card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: start;">
-        <strong style="font-size: 1.1rem;">${aluno.nome}</strong>
-        <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: #fef2f2; color: #dc2626;">Trancado</span>
-      </div>
-      <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
-        Tel: ${aluno.telefone || "Nao informado"}<br>
-        Turma: ${turma ? `${turma.nome} (${turma.nivel})` : "Sem turma"}<br>
-        Trancado em: ${dataTrancamento}
-      </p>
-      <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;"></div>
-    `;
-
-    const acoes = card.querySelector("div:last-child");
-
-    const btnHistorico = document.createElement("button");
-    btnHistorico.className = "btn-secondary";
-    btnHistorico.textContent = "Historico";
-    btnHistorico.onclick = () => abrirHistoricoAluno(aluno);
-    acoes.appendChild(btnHistorico);
-
-    const btnReativar = document.createElement("button");
-    btnReativar.className = "btn-primary";
-    btnReativar.textContent = "Reativar";
-    btnReativar.onclick = () => {
-      aluno.status = "ativo";
-      delete aluno.dataTrancamento;
-      adicionarEventoAluno(aluno.id, "Matricula reativada");
-      UI.navigate("trancados");
-    };
-    acoes.appendChild(btnReativar);
-
-    const btnExcluir = document.createElement("button");
-    btnExcluir.className = "btn-secondary";
-    btnExcluir.textContent = "Excluir Definitivamente";
-    btnExcluir.onclick = () => {
-      if (confirm("Mover para lixeira? O aluno podera ser restaurado posteriormente.")) {
-        aluno.status = "excluido";
-        aluno.dataExclusao = new Date().toISOString();
-        adicionarEventoAluno(aluno.id, "Aluno excluido");
-        UI.navigate("trancados");
-      }
-    };
-    acoes.appendChild(btnExcluir);
-
-    grid.appendChild(card);
-  });
-
+  container.appendChild(filtrosDiv);
   container.appendChild(grid);
   UI.content.appendChild(container);
+
+  // Funcao para atualizar turmas conforme unidade
+  function atualizarTurmasDisponiveis() {
+    const unidadeId = selectUnidade.value;
+    let turmasFiltradas = turmas;
+    if (unidadeId) {
+      turmasFiltradas = turmas.filter(t => t.unidade_id === unidadeId);
+    }
+    selectTurma.innerHTML = `<option value="">Todas as turmas</option>` +
+      turmasFiltradas.map(t => `<option value="${t.id}">${t.nome} - ${t.nivel}</option>`).join("");
+  }
+
+  // Funcao para filtrar e renderizar
+  function filtrarTrancados() {
+    const unidadeId = selectUnidade.value;
+    const turmaId = selectTurma.value;
+    const nomeBusca = inputNome.value.toLowerCase().trim();
+
+    let alunosFiltrados = todosTrancados;
+
+    // Filtrar por unidade
+    if (unidadeId) {
+      alunosFiltrados = alunosFiltrados.filter(a => a.unidade_id === unidadeId);
+    }
+
+    // Filtrar por turma
+    if (turmaId) {
+      alunosFiltrados = alunosFiltrados.filter(a => alunoEmTurma(a, turmaId));
+    }
+
+    // Filtrar por nome
+    if (nomeBusca) {
+      alunosFiltrados = alunosFiltrados.filter(a => 
+        (a.nome || "").toLowerCase().includes(nomeBusca)
+      );
+    }
+
+    // Atualizar contagem
+    contagem.textContent = `${alunosFiltrados.length} aluno${alunosFiltrados.length !== 1 ? "s" : ""} trancado${alunosFiltrados.length !== 1 ? "s" : ""} encontrado${alunosFiltrados.length !== 1 ? "s" : ""}`;
+
+    // Limpar grid
+    grid.innerHTML = "";
+
+    // Estado vazio
+    if (alunosFiltrados.length === 0) {
+      const vazio = document.createElement("div");
+      vazio.style.cssText = "grid-column: 1 / -1; text-align: center; color: #64748b; padding: 2rem;";
+      vazio.textContent = todosTrancados.length === 0 
+        ? "Nenhum aluno trancado." 
+        : "Nenhum aluno trancado encontrado com os filtros aplicados.";
+      grid.appendChild(vazio);
+      return;
+    }
+
+    // Renderizar cards
+    alunosFiltrados.forEach(aluno => {
+      const turma = DataStore.findById("turmas", aluno.turma);
+      const unidade = DataStore.findById("unidades", aluno.unidade_id);
+      const dataTrancamento = aluno.dataTrancamento 
+        ? new Date(aluno.dataTrancamento).toLocaleDateString("pt-BR") 
+        : "N/A";
+
+      const card = document.createElement("div");
+      card.className = "summary-card";
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+          <strong style="font-size: 1.1rem;">${aluno.nome}</strong>
+          <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: #fef2f2; color: #dc2626;">Trancado</span>
+        </div>
+        <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
+          Tel: ${aluno.telefone || "Nao informado"}<br>
+          Unidade: ${unidade ? unidade.nome : "Sem unidade"}<br>
+          Turma: ${turma ? `${turma.nome} (${turma.nivel})` : "Sem turma"}<br>
+          Trancado em: ${dataTrancamento}
+        </p>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;"></div>
+      `;
+
+      const acoes = card.querySelector("div:last-child");
+
+      const btnHistorico = document.createElement("button");
+      btnHistorico.className = "btn-secondary";
+      btnHistorico.textContent = "Historico";
+      btnHistorico.onclick = () => abrirHistoricoAluno(aluno);
+      acoes.appendChild(btnHistorico);
+
+      const btnReativar = document.createElement("button");
+      btnReativar.className = "btn-primary";
+      btnReativar.textContent = "Reativar";
+      btnReativar.onclick = () => {
+        aluno.status = "ativo";
+        delete aluno.dataTrancamento;
+        adicionarEventoAluno(aluno.id, "Matricula reativada");
+        UI.navigate("trancados");
+      };
+      acoes.appendChild(btnReativar);
+
+      const btnExcluir = document.createElement("button");
+      btnExcluir.className = "btn-secondary";
+      btnExcluir.textContent = "Excluir Definitivamente";
+      btnExcluir.onclick = () => {
+        if (confirm("Mover para lixeira? O aluno podera ser restaurado posteriormente.")) {
+          aluno.status = "excluido";
+          aluno.dataExclusao = new Date().toISOString();
+          adicionarEventoAluno(aluno.id, "Aluno excluido");
+          UI.navigate("trancados");
+        }
+      };
+      acoes.appendChild(btnExcluir);
+
+      grid.appendChild(card);
+    });
+  }
+
+  // Event listeners
+  selectUnidade.addEventListener("change", () => {
+    atualizarTurmasDisponiveis();
+    filtrarTrancados();
+  });
+  selectTurma.addEventListener("change", filtrarTrancados);
+  inputNome.addEventListener("input", filtrarTrancados);
+
+  // Renderizacao inicial
+  atualizarTurmasDisponiveis();
+  filtrarTrancados();
 }
 
 /** Abre modal com historico do aluno */
