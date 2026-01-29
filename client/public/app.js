@@ -2871,16 +2871,22 @@ function renderCardsUnidades() {
     const turmasVinculadas = DataStore.state.data.turmas
       .filter(t => t.ativa !== false && t.unidade_id === unidade.id)
       .length;
+    
+    const mensalidadeBase = unidade.mensalidadeBase || 0;
+    const mensalidadeFormatada = mensalidadeBase > 0 
+      ? `R$ ${parseFloat(mensalidadeBase).toFixed(2).replace(".", ",")}`
+      : "Nao definida";
 
     const card = document.createElement("div");
     card.className = "summary-card";
     card.innerHTML = `
       <strong style="font-size: 1.1rem;">${unidade.nome}</strong>
       <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
-        📍 ${unidade.endereco || "Endereço não informado"}<br>
-        🎓 ${turmasVinculadas} turma(s) vinculada(s)
+        Endereco: ${unidade.endereco || "Nao informado"}<br>
+        Turmas: ${turmasVinculadas} vinculada(s)<br>
+        Mensalidade Base: <strong style="color: var(--color-primary, #0ea5e9);">${mensalidadeFormatada}</strong>
       </p>
-      <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;"></div>
+      <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;"></div>
     `;
 
     const acoes = card.querySelector("div:last-child");
@@ -2890,6 +2896,14 @@ function renderCardsUnidades() {
     btnEditar.textContent = "Editar";
     btnEditar.onclick = () => abrirModalUnidade(unidade);
     acoes.appendChild(btnEditar);
+    
+    // Botao Atualizar Mensalidades
+    const btnAtualizar = document.createElement("button");
+    btnAtualizar.className = "btn-secondary";
+    btnAtualizar.textContent = "Atualizar Mensalidades";
+    btnAtualizar.style.cssText = "color: #0ea5e9;";
+    btnAtualizar.onclick = () => atualizarMensalidadesUnidade(unidade);
+    acoes.appendChild(btnAtualizar);
 
     const btnExcluir = document.createElement("button");
     btnExcluir.className = "btn-secondary";
@@ -2909,6 +2923,106 @@ function renderCardsUnidades() {
   container.appendChild(grid);
 }
 
+/** Atualiza mensalidades dos alunos de uma unidade (seguro) */
+function atualizarMensalidadesUnidade(unidade) {
+  const novoValor = parseFloat(unidade.mensalidadeBase) || 0;
+  
+  if (novoValor <= 0) {
+    alert("Defina um valor-base de mensalidade para esta unidade antes de atualizar.");
+    return;
+  }
+  
+  // Valor-base aplicado na ultima atualizacao
+  const valorBaseAplicado = parseFloat(unidade.mensalidadeBaseAplicada) || 0;
+  
+  // Se nunca foi aplicado, definir como valor atual e bloquear atualizacao
+  if (valorBaseAplicado === 0) {
+    const confirmar = confirm(
+      `Primeira definicao de valor-base para esta unidade.\n\n` +
+      `Valor-base: R$ ${novoValor.toFixed(2).replace(".", ",")}\n\n` +
+      `Este valor sera registrado como referencia.\n` +
+      `Na PROXIMA atualizacao, alunos com este valor serao reajustados automaticamente.\n` +
+      `Alunos com valores diferentes serao preservados.\n\n` +
+      `Deseja registrar este valor-base?`
+    );
+    if (!confirmar) return;
+    
+    // Registrar valor-base inicial (nenhum aluno e alterado)
+    unidade.mensalidadeBaseAplicada = novoValor;
+    DataStore.save();
+    
+    alert(`Valor-base R$ ${novoValor.toFixed(2).replace(".", ",")} registrado!\n\n` +
+          `Na proxima atualizacao, alunos com este valor serao reajustados automaticamente.`);
+    UI.navigate("unidades");
+    return;
+  }
+  
+  // Se valor nao mudou, nao ha o que atualizar
+  if (novoValor === valorBaseAplicado) {
+    alert("O valor-base nao foi alterado. Nao ha alunos para atualizar.");
+    return;
+  }
+  
+  // Buscar alunos elegiveis para atualizacao
+  const alunos = DataStore.state.data.alunos.filter(a => 
+    a.status === "ativo" && 
+    a.unidade_id === unidade.id
+  );
+  
+  let atualizados = 0;
+  let ignoradosMultiplasTurmas = 0;
+  let ignoradosValorPersonalizado = 0;
+  let ignoradosBolsistas = 0;
+  
+  alunos.forEach(aluno => {
+    // Ignorar bolsistas
+    if (isBolsista(aluno)) {
+      ignoradosBolsistas++;
+      return;
+    }
+    
+    // Ignorar alunos com multiplas turmas
+    const turmasIds = getTurmasIds(aluno);
+    if (turmasIds.length > 1) {
+      ignoradosMultiplasTurmas++;
+      return;
+    }
+    
+    const mensalidadeAtual = parseFloat(aluno.mensalidade) || 0;
+    
+    // REGRA ESTRITA: Apenas atualizar se mensalidade === valor-base aplicado anteriormente
+    // Qualquer outro valor (incluindo 0) e considerado personalizado
+    if (mensalidadeAtual !== valorBaseAplicado) {
+      ignoradosValorPersonalizado++;
+      return;
+    }
+    
+    // Atualizar mensalidade
+    aluno.mensalidade = novoValor;
+    atualizados++;
+  });
+  
+  // Registrar novo valor-base aplicado
+  unidade.mensalidadeBaseAplicada = novoValor;
+  DataStore.save();
+  
+  // Feedback detalhado
+  let mensagem = `Atualizacao concluida!\n\n`;
+  mensagem += `Alunos atualizados: ${atualizados}\n`;
+  mensagem += `Valor anterior: R$ ${valorBaseAplicado.toFixed(2).replace(".", ",")}\n`;
+  mensagem += `Novo valor: R$ ${novoValor.toFixed(2).replace(".", ",")}\n`;
+  
+  const totalIgnorados = ignoradosBolsistas + ignoradosMultiplasTurmas + ignoradosValorPersonalizado;
+  if (totalIgnorados > 0) {
+    mensagem += `\nIgnorados: ${totalIgnorados}\n`;
+    if (ignoradosValorPersonalizado > 0) mensagem += `  - Valor personalizado: ${ignoradosValorPersonalizado}\n`;
+    if (ignoradosMultiplasTurmas > 0) mensagem += `  - Multiplas turmas: ${ignoradosMultiplasTurmas}\n`;
+  }
+  
+  alert(mensagem);
+  UI.navigate("unidades");
+}
+
 /** Modal para criar/editar unidade */
 function abrirModalUnidade(unidadeExistente = null) {
   const overlay = criarOverlay();
@@ -2916,6 +3030,7 @@ function abrirModalUnidade(unidadeExistente = null) {
   modal.className = "modal-card";
 
   const isEdicao = !!unidadeExistente;
+  const mensalidadeAtual = unidadeExistente?.mensalidadeBase || "";
 
   modal.innerHTML = `
     <h2 class="modal-title">${isEdicao ? "Editar Unidade" : "Nova Unidade"}</h2>
@@ -2927,8 +3042,14 @@ function abrirModalUnidade(unidadeExistente = null) {
       </div>
 
       <div class="field">
-        <label>Endereço</label>
-        <input id="endereco" placeholder="Endereço (opcional)" value="${unidadeExistente?.endereco || ""}">
+        <label>Endereco</label>
+        <input id="endereco" placeholder="Endereco (opcional)" value="${unidadeExistente?.endereco || ""}">
+      </div>
+      
+      <div class="field">
+        <label>Mensalidade Base (R$)</label>
+        <input id="mensalidadeBase" type="number" step="0.01" min="0" placeholder="Ex: 150.00" value="${mensalidadeAtual}">
+        <small style="color: #64748b; font-size: 0.8rem;">Valor padrao para alunos desta unidade</small>
       </div>
     </div>
 
@@ -2944,13 +3065,17 @@ function abrirModalUnidade(unidadeExistente = null) {
     const nome = modal.querySelector("#nome").value;
 
     if (!nome) {
-      alert("Nome é obrigatório!");
+      alert("Nome e obrigatorio!");
       return;
     }
+    
+    const novaMensalidade = parseFloat(modal.querySelector("#mensalidadeBase").value) || 0;
 
     const dados = {
       nome: nome,
       endereco: modal.querySelector("#endereco").value,
+      mensalidadeBase: novaMensalidade,
+      // mensalidadeBaseAplicada NAO e alterada aqui - so no botao "Atualizar Mensalidades"
     };
 
     if (isEdicao) {
