@@ -948,8 +948,13 @@ const pagesRenderers = {
     const grid = document.createElement("div");
     grid.className = "dashboard-cards";
 
+    // Contar apenas alunos PAGANTES (excluir bolsistas)
+    const alunosPagantes = DataStore.state.data.alunos.filter(a => a.status === "ativo" && !isBolsista(a)).length;
+    const bolsistasAtivos = DataStore.state.data.alunos.filter(a => a.status === "ativo" && isBolsista(a)).length;
+    
     const cards = [
-      ["Alunos Ativos", DataStore.count("alunos"), null],
+      ["Alunos Ativos", alunosPagantes, null],
+      ["Bolsistas Ativos", bolsistasAtivos, null],
       ["Alunos Trancados", DataStore.countTrancados(), null],
       ["Turmas Ativas", DataStore.count("turmas"), null],
       ["Unidades", DataStore.count("unidades"), null],
@@ -1119,12 +1124,13 @@ function renderAlunos() {
   renderCardsAlunosAtivos("");
 }
 
-/** Renderiza cards de alunos ATIVOS */
+/** Renderiza cards de alunos ATIVOS (exclui bolsistas - eles aparecem na aba Bolsistas) */
 function renderCardsAlunosAtivos(buscaNome) {
   const container = document.getElementById("alunos-container");
   container.innerHTML = "";
 
-  let alunos = DataStore.state.data.alunos.filter(a => a.status === "ativo");
+  // Filtrar apenas alunos PAGANTES (excluir bolsistas)
+  let alunos = DataStore.state.data.alunos.filter(a => a.status === "ativo" && !isBolsista(a));
 
   if (buscaNome) {
     const termo = buscaNome.toLowerCase();
@@ -1250,6 +1256,17 @@ function getAlunosDaTurma(turmaId) {
   if (!turmaId) return [];
   return DataStore.state.data.alunos.filter(aluno => 
     aluno.status === "ativo" && alunoEmTurma(aluno, turmaId)
+  );
+}
+
+/**
+ * Obtem apenas alunos PAGANTES de uma turma (exclui bolsistas)
+ * Usado para exibicao nos cards de Turma (separacao conceitual)
+ */
+function getAlunosPagantesDaTurma(turmaId) {
+  if (!turmaId) return [];
+  return DataStore.state.data.alunos.filter(aluno => 
+    aluno.status === "ativo" && alunoEmTurma(aluno, turmaId) && !isBolsista(aluno)
   );
 }
 
@@ -1560,7 +1577,7 @@ function renderCardsBolsistas() {
     const statusClass = aluno.status === "ativo" ? "badge-success" : "badge-warning";
     const statusLabel = aluno.status === "ativo" ? "Ativo" : "Trancado";
     
-    // Renderizar turmas como chips
+    // Renderizar turmas como chips com word-break para evitar vazamento
     let turmasHtml = "";
     if (turmasIds.length === 0) {
       turmasHtml = '<span style="color: var(--color-text-secondary); font-style: italic;">Nenhuma turma vinculada</span>';
@@ -1568,7 +1585,7 @@ function renderCardsBolsistas() {
       turmasHtml = turmasIds.map(tid => {
         const t = DataStore.findById("turmas", tid);
         if (!t) return "";
-        return `<span class="badge badge-muted" style="margin-right: 0.25rem;">${t.nome} - ${t.nivel || "Sem nivel"}</span>`;
+        return `<span class="badge badge-muted" style="display: inline-block; max-width: 100%; word-break: break-word; white-space: normal; text-align: left; padding: 0.35rem 0.6rem; font-size: 0.8rem;">${t.nome} - ${t.nivel || "Sem nivel"}</span>`;
       }).join("");
     }
     
@@ -2460,13 +2477,12 @@ function renderCardsTurmas(unidadeFiltro) {
       .join(", ");
     
     // ALUNO e a UNICA fonte da verdade - calculo DINAMICO
-    const alunosMatriculados = getAlunosDaTurma(turma.id);
+    // Exibir apenas alunos PAGANTES (bolsistas aparecem na aba Bolsistas)
+    const alunosMatriculados = getAlunosPagantesDaTurma(turma.id);
     
     const listaAlunosHtml = alunosMatriculados.length > 0
       ? alunosMatriculados.map(a => {
-          // Mostrar "bolsista" se for bolsista, senao "regular"
-          const tipoLabel = isBolsista(a) ? "bolsista" : "regular";
-          return `<li style="padding: 2px 0;">${a.nome} <span style="color: #94a3b8; font-size: 0.8rem;">(${tipoLabel})</span></li>`;
+          return `<li style="padding: 2px 0;">${a.nome}</li>`;
         }).join("")
       : '<li style="color: #94a3b8;">Nenhum aluno matriculado</li>';
 
