@@ -3510,6 +3510,13 @@ function renderMensalidades() {
   btn.onclick = () => abrirModalMensalidade();
   header.appendChild(btn);
 
+  const btnDisparo = document.createElement("button");
+  btnDisparo.className = "btn-secondary";
+  btnDisparo.textContent = "Disparo Multiplo";
+  btnDisparo.setAttribute("data-testid", "button-disparo-multiplo");
+  btnDisparo.onclick = () => abrirModalDisparoMultiplo();
+  header.appendChild(btnDisparo);
+
   const selectStatus = document.createElement("select");
   selectStatus.style.padding = "0.5rem";
   selectStatus.innerHTML = `
@@ -3855,6 +3862,330 @@ function abrirModalReciboGerado(recibo) {
 
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
+}
+
+/** Modal para disparo múltiplo de mensalidades */
+function abrirModalDisparoMultiplo() {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+  modal.style.maxWidth = "700px";
+
+  const mesAtual = String(new Date().getMonth() + 1).padStart(2, "0");
+  const anoAtual = String(new Date().getFullYear());
+
+  const unidades = DataStore.state.data.unidades.filter(u => u.ativa !== false);
+  const turmas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
+
+  modal.innerHTML = `
+    <h2 class="modal-title">Disparo Multiplo de Mensalidades</h2>
+
+    <div class="modal-grid">
+      <div class="field">
+        <label>Tipo de Disparo *</label>
+        <select id="tipo-disparo" data-testid="select-tipo-disparo">
+          <option value="">Selecione</option>
+          <option value="turma">Por Turma</option>
+          <option value="unidade">Por Unidade</option>
+        </select>
+      </div>
+
+      <div class="field" id="container-selecao" style="display: none;">
+        <label id="label-selecao">Selecione</label>
+        <select id="selecao-disparo" data-testid="select-selecao-disparo">
+          <option value="">Selecione</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Competencia (Mes/Ano) *</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <select id="mes-disparo" style="flex: 1;" data-testid="select-mes-disparo">
+            ${["01","02","03","04","05","06","07","08","09","10","11","12"].map(m => 
+              `<option value="${m}" ${mesAtual === m ? "selected" : ""}>${m}</option>`
+            ).join("")}
+          </select>
+          <input id="ano-disparo" type="number" style="flex: 1;" value="${anoAtual}" data-testid="input-ano-disparo">
+        </div>
+      </div>
+    </div>
+
+    <div id="previa-disparo" style="margin-top: 1.5rem; display: none;">
+      <h3 style="margin-bottom: 1rem; font-size: 1rem; color: #374151;">Pre-visualizacao</h3>
+      <div id="lista-previa"></div>
+      <div id="resumo-previa" style="margin-top: 1rem; padding: 1rem; background: #f0f9ff; border-radius: 8px;"></div>
+    </div>
+
+    <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end; flex-wrap: wrap;">
+      <button class="btn-secondary" id="btn-preview-disparo" style="display: none;" data-testid="button-preview-disparo">Gerar Pre-visualizacao</button>
+      <button class="btn-primary" id="btn-confirmar-disparo" style="display: none;" data-testid="button-confirmar-disparo">Confirmar Disparo</button>
+      <button class="btn-secondary" id="btn-cancelar-disparo" data-testid="button-cancelar-disparo">Cancelar</button>
+    </div>
+  `;
+
+  const selectTipo = modal.querySelector("#tipo-disparo");
+  const containerSelecao = modal.querySelector("#container-selecao");
+  const labelSelecao = modal.querySelector("#label-selecao");
+  const selectSelecao = modal.querySelector("#selecao-disparo");
+  const btnPreview = modal.querySelector("#btn-preview-disparo");
+  const btnConfirmar = modal.querySelector("#btn-confirmar-disparo");
+  const btnCancelar = modal.querySelector("#btn-cancelar-disparo");
+  const previaDiv = modal.querySelector("#previa-disparo");
+  const listaPrevia = modal.querySelector("#lista-previa");
+  const resumoPrevia = modal.querySelector("#resumo-previa");
+
+  let dadosPrevia = null;
+
+  // Atualizar opcoes conforme tipo
+  selectTipo.onchange = () => {
+    const tipo = selectTipo.value;
+    previaDiv.style.display = "none";
+    btnConfirmar.style.display = "none";
+    dadosPrevia = null;
+
+    if (!tipo) {
+      containerSelecao.style.display = "none";
+      btnPreview.style.display = "none";
+      return;
+    }
+
+    containerSelecao.style.display = "block";
+    btnPreview.style.display = "inline-block";
+
+    if (tipo === "turma") {
+      labelSelecao.textContent = "Turma *";
+      selectSelecao.innerHTML = `<option value="">Selecione a turma</option>` +
+        turmas.map(t => {
+          const unidade = DataStore.findById("unidades", t.unidade_id);
+          return `<option value="${t.id}">${t.nome} - ${t.nivel}${unidade ? ` (${unidade.nome})` : ""}</option>`;
+        }).join("");
+    } else {
+      labelSelecao.textContent = "Unidade *";
+      selectSelecao.innerHTML = `<option value="">Selecione a unidade</option>` +
+        unidades.map(u => `<option value="${u.id}">${u.nome}</option>`).join("");
+    }
+  };
+
+  // Gerar pre-visualizacao
+  btnPreview.onclick = () => {
+    const tipo = selectTipo.value;
+    const selecaoId = selectSelecao.value;
+    const mes = modal.querySelector("#mes-disparo").value;
+    const ano = modal.querySelector("#ano-disparo").value;
+
+    if (!tipo || !selecaoId || !mes || !ano) {
+      alert("Preencha todos os campos obrigatorios.");
+      return;
+    }
+
+    dadosPrevia = calcularDisparoMensalidades(tipo, selecaoId, mes, ano);
+    renderizarPrevia(dadosPrevia, listaPrevia, resumoPrevia);
+    previaDiv.style.display = "block";
+    btnConfirmar.style.display = dadosPrevia.elegiveis.length > 0 ? "inline-block" : "none";
+  };
+
+  // Confirmar disparo
+  btnConfirmar.onclick = () => {
+    if (!dadosPrevia || dadosPrevia.elegiveis.length === 0) {
+      alert("Nenhum aluno elegivel para disparo.");
+      return;
+    }
+
+    if (!confirm(`Confirmar geracao de ${dadosPrevia.elegiveis.length} mensalidade(s)?`)) {
+      return;
+    }
+
+    executarDisparoMensalidades(dadosPrevia);
+    overlay.remove();
+    alert(`${dadosPrevia.elegiveis.length} mensalidade(s) gerada(s) com sucesso!`);
+    UI.navigate("mensalidades");
+  };
+
+  btnCancelar.onclick = () => overlay.remove();
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+/** Calcula alunos elegiveis para disparo de mensalidades */
+function calcularDisparoMensalidades(tipo, selecaoId, mes, ano) {
+  const alunos = DataStore.state.data.alunos;
+  const mensalidades = DataStore.state.data.mensalidades;
+  const turmas = DataStore.state.data.turmas;
+
+  const elegiveis = [];
+  const ignorados = [];
+
+  // Selecionar alunos conforme tipo
+  let alunosCandidatos = [];
+
+  if (tipo === "turma") {
+    // Alunos vinculados a esta turma
+    alunosCandidatos = alunos.filter(a => alunoEmTurma(a, selecaoId));
+  } else {
+    // Alunos vinculados a esta unidade
+    alunosCandidatos = alunos.filter(a => a.unidade_id === selecaoId);
+  }
+
+  alunosCandidatos.forEach(aluno => {
+    // Verificar status
+    if (aluno.status !== "ativo") {
+      ignorados.push({ aluno, motivo: aluno.status === "trancado" ? "Trancado" : "Inativo" });
+      return;
+    }
+
+    // Verificar bolsista
+    if (isBolsista(aluno)) {
+      ignorados.push({ aluno, motivo: "Bolsista" });
+      return;
+    }
+
+    // Verificar duplicidade
+    const jaPossuiMensalidade = mensalidades.some(m => 
+      m.aluno_id === aluno.id && 
+      m.mes === mes && 
+      m.ano === ano
+    );
+
+    if (jaPossuiMensalidade) {
+      ignorados.push({ aluno, motivo: "Ja possui mensalidade" });
+      return;
+    }
+
+    // Calcular valor (soma de todas as turmas do aluno)
+    const turmasIds = getTurmasIds(aluno);
+    let valorTotal = 0;
+    const nomesTurmas = [];
+
+    turmasIds.forEach(turmaId => {
+      const turma = DataStore.findById("turmas", turmaId);
+      if (turma && turma.ativa !== false) {
+        // Usar mensalidade do aluno se definida, senao usar valor da turma
+        const valorTurma = parseFloat(aluno.mensalidade) || parseFloat(turma.valor) || 0;
+        valorTotal += valorTurma;
+        nomesTurmas.push(turma.nome);
+      }
+    });
+
+    // Se aluno tem apenas uma turma, usar mensalidade definida
+    if (turmasIds.length <= 1) {
+      valorTotal = parseFloat(aluno.mensalidade) || 0;
+      const turma = DataStore.findById("turmas", aluno.turma);
+      if (turma) nomesTurmas.push(turma.nome);
+    }
+
+    if (valorTotal <= 0) {
+      ignorados.push({ aluno, motivo: "Valor nao definido" });
+      return;
+    }
+
+    elegiveis.push({
+      aluno,
+      valor: valorTotal,
+      turmas: nomesTurmas,
+      descricao: nomesTurmas.length > 1 
+        ? `Mensalidade - Turmas: ${nomesTurmas.join(", ")}`
+        : `Mensalidade - ${nomesTurmas[0] || "Turma"}`
+    });
+  });
+
+  return { elegiveis, ignorados, mes, ano };
+}
+
+/** Renderiza pre-visualizacao do disparo */
+function renderizarPrevia(dados, listaContainer, resumoContainer) {
+  listaContainer.innerHTML = "";
+
+  if (dados.elegiveis.length === 0 && dados.ignorados.length === 0) {
+    listaContainer.innerHTML = '<p style="color: #64748b;">Nenhum aluno encontrado.</p>';
+    resumoContainer.innerHTML = "";
+    return;
+  }
+
+  // Lista de elegiveis
+  if (dados.elegiveis.length > 0) {
+    const secaoElegiveis = document.createElement("div");
+    secaoElegiveis.innerHTML = `<h4 style="font-size: 0.9rem; color: #16a34a; margin-bottom: 0.5rem;">Alunos que receberao mensalidade (${dados.elegiveis.length})</h4>`;
+    
+    const listaElegiveis = document.createElement("div");
+    listaElegiveis.style.cssText = "max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;";
+
+    dados.elegiveis.forEach(item => {
+      const linha = document.createElement("div");
+      linha.style.cssText = "padding: 0.5rem 0.75rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between;";
+      linha.innerHTML = `
+        <span>${item.aluno.nome}</span>
+        <span style="font-weight: 500;">${formatarReais(item.valor)}</span>
+      `;
+      listaElegiveis.appendChild(linha);
+    });
+
+    secaoElegiveis.appendChild(listaElegiveis);
+    listaContainer.appendChild(secaoElegiveis);
+  }
+
+  // Lista de ignorados
+  if (dados.ignorados.length > 0) {
+    const secaoIgnorados = document.createElement("div");
+    secaoIgnorados.style.marginTop = "1rem";
+    secaoIgnorados.innerHTML = `<h4 style="font-size: 0.9rem; color: #dc2626; margin-bottom: 0.5rem;">Alunos ignorados (${dados.ignorados.length})</h4>`;
+    
+    const listaIgnorados = document.createElement("div");
+    listaIgnorados.style.cssText = "max-height: 150px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;";
+
+    dados.ignorados.forEach(item => {
+      const linha = document.createElement("div");
+      linha.style.cssText = "padding: 0.5rem 0.75rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between;";
+      linha.innerHTML = `
+        <span>${item.aluno.nome}</span>
+        <span style="font-size: 0.85rem; color: #94a3b8;">${item.motivo}</span>
+      `;
+      listaIgnorados.appendChild(linha);
+    });
+
+    secaoIgnorados.appendChild(listaIgnorados);
+    listaContainer.appendChild(secaoIgnorados);
+  }
+
+  // Resumo
+  const totalGeral = dados.elegiveis.reduce((sum, item) => sum + item.valor, 0);
+  resumoContainer.innerHTML = `
+    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <strong>Competencia:</strong> ${dados.mes}/${dados.ano}
+      </div>
+      <div>
+        <strong>Total de mensalidades:</strong> ${dados.elegiveis.length}
+      </div>
+      <div>
+        <strong>Valor total:</strong> ${formatarReais(totalGeral)}
+      </div>
+    </div>
+  `;
+}
+
+/** Executa o disparo de mensalidades */
+function executarDisparoMensalidades(dados) {
+  dados.elegiveis.forEach(item => {
+    const novaMensalidade = {
+      id: gerarId(),
+      aluno_id: item.aluno.id,
+      mes: dados.mes,
+      ano: dados.ano,
+      valor: item.valor,
+      status: "pendente",
+      forma_pagamento: "",
+      descricao: item.descricao,
+      createdAt: new Date().toISOString()
+    };
+
+    DataStore.state.data.mensalidades.push(novaMensalidade);
+
+    // Registrar no historico do aluno
+    adicionarEventoAluno(item.aluno.id, `Mensalidade gerada: ${dados.mes}/${dados.ano} - ${formatarReais(item.valor)}`);
+  });
+
+  DataStore.save();
 }
 
 /* =========================
