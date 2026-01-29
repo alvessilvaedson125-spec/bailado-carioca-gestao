@@ -1242,9 +1242,9 @@ function isBolsista(aluno) {
 /** Obtem array de turmas_ids do aluno (migrando turma unica se necessario) */
 function getTurmasIds(aluno) {
   if (!aluno) return [];
-  // Se ja tem array turmas_ids, retorna ele
+  // Se ja tem array turmas_ids, retorna COPIA para evitar mutacao
   if (Array.isArray(aluno.turmas_ids)) {
-    return aluno.turmas_ids;
+    return [...aluno.turmas_ids];
   }
   // Migrar turma unica para array
   if (aluno.turma) {
@@ -1255,9 +1255,11 @@ function getTurmasIds(aluno) {
 
 /** Define turmas_ids e mantem compatibilidade com turma unica */
 function setTurmasIds(aluno, turmasIds) {
-  aluno.turmas_ids = turmasIds || [];
+  // Sempre criar novo array para evitar mutacao
+  const novoArray = Array.isArray(turmasIds) ? [...turmasIds] : [];
+  aluno.turmas_ids = novoArray;
   // Manter turma como primeira para compatibilidade
-  aluno.turma = turmasIds.length > 0 ? turmasIds[0] : null;
+  aluno.turma = novoArray.length > 0 ? novoArray[0] : null;
 }
 
 /** Verifica se aluno pertence a uma turma (usando turmas_ids ou turma) */
@@ -1761,7 +1763,7 @@ function abrirModalNovoBolsista() {
       email: "",
       cpf: "",
       turma: turmasSelecionadas.length > 0 ? turmasSelecionadas[0] : null,
-      turmas_ids: turmasSelecionadas,
+      turmas_ids: [...turmasSelecionadas], // Copia para evitar mutacao
       unidade: null,
       tipoMatricula: "bolsista",
       mensalidade: 0,
