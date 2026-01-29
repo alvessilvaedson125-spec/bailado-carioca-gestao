@@ -1,0 +1,157 @@
+Você é um analista de sistemas e UX sênior responsável por
+FASE FINAL de validação, documentação e avaliação de um sistema em produção.
+
+Sistema: Gestão Bailado Carioca  
+Contexto: Sistema interno de uso diário para escola de dança,
+já funcional e estável.
+
+---
+
+## 🎯 OBJETIVOS DESTA TAREFA
+
+1. Executar um CHECKLIST COMPLETO de validação funcional
+2. Descrever TESTES manuais realizados (como se fosse QA)
+3. ATUALIZAR o MANUAL INTERNO DE USO (texto claro e simples)
+4. Fornecer FEEDBACK PROFISSIONAL sobre o sistema:
+   - pontos fortes
+   - pontos de atenção
+   - sugestões futuras (não obrigatórias)
+
+---
+
+## ⚠️ REGRAS ABSOLUTAS
+
+- NÃO alterar código
+- NÃO sugerir refatorações agora
+- NÃO criar novas funcionalidades
+- NÃO mudar regras de negócio
+- O sistema deve ser tratado como PRONTO PARA USO
+
+---
+
+## 1️⃣ CHECKLIST FUNCIONAL (OBRIGATÓRIO)
+
+Validar e confirmar funcionamento de TODAS as áreas abaixo,
+marcando como OK ou APONTANDO AJUSTES (se houver):
+
+### Inicialização e Login
+- Tela de abertura
+- Login admin / operacional
+- Persistência de sessão
+- Logout
+
+### Navegação
+- Menu lateral
+- Cliques entre abas
+- Acesso bloqueado por perfil
+
+### Dashboard (Admin)
+- Cards
+- Inadimplência
+- Filtros corretos (bolsistas excluídos)
+- Gráficos
+
+### Alunos
+- Cadastro
+- Edição
+- Status (ativo / trancado / excluído)
+- Histórico
+
+### Bolsistas
+- Cadastro direto
+- Edição de bolsa
+- Vínculo com múltiplas turmas
+- Separação de alunos pagantes
+- Layout e usabilidade
+
+### Turmas
+- Cadastro
+- Professores / monitores
+- Alunos derivados corretamente
+- Bolsistas não contam como matriculados
+
+### Presença
+- Registro
+- Consulta
+- Bolsistas incluídos corretamente
+
+### Financeiro (Admin)
+- Mensalidades
+- Caixa
+- Recibos
+- Relatórios
+
+### Configurações
+- Backup / restore
+- Alteração de senha
+- Tema claro / escuro
+
+---
+
+## 2️⃣ TESTES MANUAIS (DESCREVER)
+
+Descrever os testes realizados, por exemplo:
+- criação de aluno
+- criação de bolsista
+- exclusão
+- recarregamento da página
+- persistência de dados
+- testes de erro e estado vazio
+
+---
+
+## 3️⃣ MANUAL INTERNO DE USO (ATUALIZADO)
+
+Criar um MANUAL SIMPLES E CLARO, para uso interno, com linguagem acessível.
+
+Estrutura sugerida:
+
+### Introdução
+- Para que serve o sistema
+- Quem pode usar (admin / operacional)
+
+### Fluxo diário recomendado
+- Cadastrar alunos
+- Gerenciar bolsistas
+- Registrar presença
+- Conferir informações
+
+### Regras importantes
+- Diferença entre aluno e bolsista
+- O que é considerado aluno matriculado
+- O que NÃO entra no financeiro
+
+### Boas práticas
+- Backup
+- Conferência antes de excluir
+- Uso correto de status
+
+---
+
+## 4️⃣ FEEDBACK PROFISSIONAL SOBRE O SISTEMA
+
+Avaliar o sistema como produto:
+
+- Pontos fortes (arquitetura, UX, clareza)
+- Pontos de atenção (sem críticas destrutivas)
+- Sugestões FUTURAS (opcionais), como:
+  - melhorias de relatório
+  - automações
+  - indicadores
+
+⚠️ Não sugerir nada que precise ser feito agora.
+
+---
+
+## ✅ RESULTADO FINAL ESPERADO
+
+- Checklist validado
+- Sistema declarado PRONTO PARA USO DIÁRIO
+- Manual interno claro
+- Feedback construtivo e profissional
+
+---
+
+IMPORTANTE:
+Tratar o sistema como um produto real, em produção,
+feito para uma escola de dança, não como projeto acadêmico.

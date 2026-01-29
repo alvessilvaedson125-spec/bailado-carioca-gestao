@@ -179,3 +179,17 @@ The application supports dark/light mode:
 - CSS variables for seamless color switching
 - Preference persisted to localStorage key "bailadoTheme"
 - Body class "dark-mode" controls theme
+
+## Documentation
+
+### Manual de Uso
+- **Arquivo**: `MANUAL_SISTEMA_BAILADO.md`
+- Checklist funcional validado
+- Testes manuais documentados
+- Manual interno para equipe
+- Feedback profissional
+
+### Status do Sistema
+- **Versao**: 9.0
+- **Status**: PRONTO PARA USO DIARIO
+- **Validado em**: Janeiro 2026
