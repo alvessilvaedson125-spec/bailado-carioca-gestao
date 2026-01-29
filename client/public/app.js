@@ -1240,6 +1240,19 @@ function isBolsista(aluno) {
   return aluno?.bolsa?.ativa === true || aluno?.tipoMatricula === "bolsista";
 }
 
+/**
+ * FUNCAO CENTRAL: Obtem alunos de uma turma de forma DINAMICA
+ * ALUNO e a UNICA fonte da verdade - turma NAO armazena alunos
+ * Inclui alunos regulares (turma) e bolsistas (turmas_ids)
+ * Usa alunoEmTurma() para consistencia com resto do sistema
+ */
+function getAlunosDaTurma(turmaId) {
+  if (!turmaId) return [];
+  return DataStore.state.data.alunos.filter(aluno => 
+    aluno.status === "ativo" && alunoEmTurma(aluno, turmaId)
+  );
+}
+
 /** Obtem array de turmas_ids do aluno (migrando turma unica se necessario) */
 function getTurmasIds(aluno) {
   if (!aluno) return [];
@@ -2446,13 +2459,14 @@ function renderCardsTurmas(unidadeFiltro) {
       .filter(Boolean)
       .join(", ");
     
-    const alunosMatriculados = DataStore.state.data.alunos
-      .filter(a => a.status === "ativo" && a.turma === turma.id);
+    // ALUNO e a UNICA fonte da verdade - calculo DINAMICO
+    const alunosMatriculados = getAlunosDaTurma(turma.id);
     
     const listaAlunosHtml = alunosMatriculados.length > 0
       ? alunosMatriculados.map(a => {
-          const tipoMatricula = a.tipoMatricula || "Normal";
-          return `<li style="padding: 2px 0;">${a.nome} <span style="color: #94a3b8; font-size: 0.8rem;">(${tipoMatricula})</span></li>`;
+          // Mostrar "bolsista" se for bolsista, senao "regular"
+          const tipoLabel = isBolsista(a) ? "bolsista" : "regular";
+          return `<li style="padding: 2px 0;">${a.nome} <span style="color: #94a3b8; font-size: 0.8rem;">(${tipoLabel})</span></li>`;
         }).join("")
       : '<li style="color: #94a3b8;">Nenhum aluno matriculado</li>';
 
@@ -3078,14 +3092,16 @@ function abrirRelatorioPagamentosProfessores() {
         valorCalculado = prof.valorPagamento || 0;
         detalhes = "Valor fixo mensal";
       } else if (prof.tipoPagamento === "por_aluno") {
+        // Usar getAlunosDaTurma para incluir bolsistas multi-turma
         const totalAlunos = turmas.reduce((sum, t) => {
-          return sum + DataStore.state.data.alunos.filter(a => a.status === "ativo" && a.turma === t.id).length;
+          return sum + getAlunosDaTurma(t.id).length;
         }, 0);
         valorCalculado = totalAlunos * (prof.valorPagamento || 0);
         detalhes = `${totalAlunos} aluno(s) x ${formatarReais(prof.valorPagamento)}`;
       } else if (prof.tipoPagamento === "percentual") {
+        // Usar getAlunosDaTurma para incluir bolsistas multi-turma
         const totalMensalidades = turmas.reduce((sum, t) => {
-          const alunosTurma = DataStore.state.data.alunos.filter(a => a.status === "ativo" && a.turma === t.id);
+          const alunosTurma = getAlunosDaTurma(t.id);
           return sum + alunosTurma.reduce((s, a) => s + (a.mensalidade || 0), 0);
         }, 0);
         valorCalculado = (totalMensalidades * (prof.valorPagamento || 0)) / 100;

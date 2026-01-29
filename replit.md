@@ -53,6 +53,15 @@ client/
 2. **DataStore Pattern**: Centralized state management with auto-save to localStorage
 3. **Modal System**: Reusable modal pattern for forms and dialogs
 4. **Card-based UI**: All data displayed in summary cards with consistent styling
+5. **Single Source of Truth**: ALUNO is the ONLY source of truth for class enrollment - turma does NOT store alunos
+
+### Data Model for Class Enrollment (Version 9)
+- **REGRA ABSOLUTA**: ALUNO e a UNICA fonte da verdade
+- **Turma NAO armazena alunos** - calculo sempre dinamico
+- **getAlunosDaTurma(turmaId)**: Funcao central que deriva alunos dinamicamente
+- Verifica: `aluno.status === "ativo" && alunoEmTurma(aluno, turmaId)`
+- **alunoEmTurma(aluno, turmaId)**: Verifica se aluno pertence a turma (via turma ou turmas_ids)
+- Evita desalinhamento, duplicacao, e dados fantasma
 
 ## Modules
 
