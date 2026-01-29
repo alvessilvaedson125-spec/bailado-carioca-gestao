@@ -4052,26 +4052,28 @@ function calcularDisparoMensalidades(tipo, selecaoId, mes, ano) {
       return;
     }
 
-    // Calcular valor (soma de todas as turmas do aluno)
+    // Calcular valor baseado nas turmas do aluno
     const turmasIds = getTurmasIds(aluno);
     let valorTotal = 0;
     const nomesTurmas = [];
 
-    turmasIds.forEach(turmaId => {
-      const turma = DataStore.findById("turmas", turmaId);
-      if (turma && turma.ativa !== false) {
-        // Usar mensalidade do aluno se definida, senao usar valor da turma
-        const valorTurma = parseFloat(aluno.mensalidade) || parseFloat(turma.valor) || 0;
-        valorTotal += valorTurma;
-        nomesTurmas.push(turma.nome);
-      }
-    });
-
-    // Se aluno tem apenas uma turma, usar mensalidade definida
-    if (turmasIds.length <= 1) {
+    if (turmasIds.length > 1) {
+      // MULTI-TURMA: Somar valores das turmas (usa turma.valor, nao aluno.mensalidade)
+      turmasIds.forEach(turmaId => {
+        const turma = DataStore.findById("turmas", turmaId);
+        if (turma && turma.ativa !== false) {
+          const valorTurma = parseFloat(turma.valor) || 0;
+          valorTotal += valorTurma;
+          nomesTurmas.push(turma.nome);
+        }
+      });
+    } else {
+      // SINGLE-TURMA: Usar mensalidade definida no aluno
       valorTotal = parseFloat(aluno.mensalidade) || 0;
       const turma = DataStore.findById("turmas", aluno.turma);
-      if (turma) nomesTurmas.push(turma.nome);
+      if (turma && turma.ativa !== false) {
+        nomesTurmas.push(turma.nome);
+      }
     }
 
     if (valorTotal <= 0) {
