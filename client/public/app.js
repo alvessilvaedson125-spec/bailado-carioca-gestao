@@ -1945,14 +1945,16 @@ function abrirModalEditarBolsa(aluno) {
   const overlay = criarOverlay();
   const modal = document.createElement("div");
   modal.className = "modal-card";
+  // CSS-only fix: max-height + flex layout para scroll interno e footer fixo
+  modal.style.cssText = "max-height: 90vh; display: flex; flex-direction: column;";
   
   const todasTurmas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
   let turmasVinculadas = [...getTurmasIds(aluno)]; // Copia para manipulacao
   
   modal.innerHTML = `
-    <h2 class="modal-title">Editar Bolsa - ${aluno.nome}</h2>
+    <h2 class="modal-title" style="flex-shrink: 0;">Editar Bolsa - ${aluno.nome}</h2>
     
-    <div class="modal-grid">
+    <div class="modal-grid" style="flex: 1; overflow-y: auto; padding-right: 0.5rem;">
       <div class="field">
         <label>Tipo de Bolsa *</label>
         <select id="bolsa-tipo" data-testid="select-bolsa-tipo">
@@ -1964,7 +1966,7 @@ function abrirModalEditarBolsa(aluno) {
       
       <div class="field full-width">
         <label>Turmas Vinculadas</label>
-        <div id="turmas-chips-container" data-testid="container-turmas-vinculadas" style="display: flex; flex-wrap: wrap; gap: 0.5rem; min-height: 40px; padding: 0.75rem; background: var(--bg-card, #fff); border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 0.5rem;"></div>
+        <div id="turmas-chips-container" data-testid="container-turmas-vinculadas" style="display: flex; flex-wrap: wrap; gap: 0.5rem; min-height: 40px; max-height: 200px; overflow-y: auto; padding: 0.75rem; background: var(--bg-card, #fff); border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 0.5rem;"></div>
         <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
           <select id="adicionar-turma" data-testid="select-add-turma" style="flex: 1; padding: 0.5rem; min-width: 200px;">
             <option value="">Selecionar turma para adicionar...</option>
@@ -1980,7 +1982,7 @@ function abrirModalEditarBolsa(aluno) {
       </div>
     </div>
     
-    <div class="modal-actions">
+    <div class="modal-actions" style="flex-shrink: 0; border-top: 1px solid var(--color-border, #e2e8f0); padding-top: 1rem; margin-top: 1rem;">
       <button class="modal-btn-secondary" data-testid="button-cancel-bolsa">Cancelar</button>
       <button class="modal-btn-primary" data-testid="button-save-bolsa">Salvar</button>
     </div>
