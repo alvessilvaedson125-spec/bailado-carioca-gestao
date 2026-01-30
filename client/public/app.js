@@ -108,17 +108,17 @@ const DataStore = {
     return this.state.data.mensalidades.filter(m => m.status === status).length;
   },
 
-  /** Calcula total de entradas no caixa */
+  /** Calcula total de entradas no caixa (exclui cancelados) */
   totalEntradas() {
     return this.state.data.caixa
-      .filter(c => c.tipo === "entrada")
+      .filter(c => c.tipo === "entrada" && c.status !== "cancelado")
       .reduce((sum, c) => sum + (c.valor || 0), 0);
   },
 
-  /** Calcula total de saídas no caixa */
+  /** Calcula total de saídas no caixa (exclui cancelados) */
   totalSaidas() {
     return this.state.data.caixa
-      .filter(c => c.tipo === "saida")
+      .filter(c => c.tipo === "saida" && c.status !== "cancelado")
       .reduce((sum, c) => sum + (c.valor || 0), 0);
   },
 
