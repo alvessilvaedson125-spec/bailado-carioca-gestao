@@ -500,6 +500,60 @@ body {
   border-radius: 3px;
 }
 
+/* Container para selecao de turmas */
+.turmas-select-container {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  max-height: 180px;
+  overflow-y: auto;
+  background: var(--color-input);
+}
+
+.turmas-select-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.turmas-select-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.turmas-select-container::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.turma-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.turma-checkbox-item:last-child {
+  border-bottom: none;
+}
+
+.turma-checkbox-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.turma-checkbox-item label {
+  cursor: pointer;
+  flex: 1;
+  font-size: 0.95rem;
+}
+
+.turma-checkbox-item .turma-unidade {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
 .modal-title {
   font-size: 1.25rem;
   font-weight: 600;

@@ -2429,9 +2429,9 @@ function abrirModalAluno(alunoExistente = null) {
 
       <div class="field" style="grid-column: span 2;">
         <label>Turmas * (selecione uma ou mais)</label>
-        <div id="turmas-container" style="border: 1px solid #d1d5db; border-radius: 6px; padding: 0.75rem; max-height: 180px; overflow-y: auto; background: #fff;">
+        <div id="turmas-container" class="turmas-select-container">
         </div>
-        <small style="color: #64748b; margin-top: 0.25rem; display: block;">Marque as turmas em que o aluno participara</small>
+        <small style="color: var(--text-muted); margin-top: 0.25rem; display: block;">Marque as turmas em que o aluno participara</small>
       </div>
 
       <div class="field">
@@ -2476,12 +2476,12 @@ function abrirModalAluno(alunoExistente = null) {
       const isChecked = turmasAtuaisIds.includes(turma.id);
       
       const checkboxDiv = document.createElement("div");
-      checkboxDiv.style.cssText = "display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid #f1f5f9;";
+      checkboxDiv.className = "turma-checkbox-item";
       checkboxDiv.innerHTML = `
-        <input type="checkbox" id="turma-${turma.id}" value="${turma.id}" data-testid="checkbox-turma-${turma.id}" ${isChecked ? "checked" : ""} style="width: 18px; height: 18px; cursor: pointer;">
-        <label for="turma-${turma.id}" style="cursor: pointer; flex: 1;">
+        <input type="checkbox" id="turma-${turma.id}" value="${turma.id}" data-testid="checkbox-turma-${turma.id}" ${isChecked ? "checked" : ""}>
+        <label for="turma-${turma.id}">
           <strong>${turma.nome}</strong> - ${turma.nivel}
-          ${unidade ? `<span style="color: #64748b; font-size: 0.85rem;">(${unidade.nome})</span>` : ""}
+          ${unidade ? `<span class="turma-unidade">(${unidade.nome})</span>` : ""}
         </label>
       `;
       turmasContainer.appendChild(checkboxDiv);
