@@ -6069,6 +6069,14 @@ function renderRelatorio() {
   btnGerar.onclick = () => gerarRelatorioMensal(parseInt(selectMes.value), parseInt(inputAno.value));
   header.appendChild(btnGerar);
 
+  const btnVerificar = document.createElement("button");
+  btnVerificar.className = "btn-secondary";
+  btnVerificar.textContent = "Verificar Inconsistencias";
+  btnVerificar.style.marginLeft = "0.5rem";
+  btnVerificar.setAttribute("data-testid", "button-verify-inconsistencies");
+  btnVerificar.onclick = () => verificarInconsistencias(parseInt(selectMes.value), parseInt(inputAno.value));
+  header.appendChild(btnVerificar);
+
   UI.content.appendChild(header);
 
   const container = document.createElement("div");
@@ -6076,6 +6084,178 @@ function renderRelatorio() {
   UI.content.appendChild(container);
 
   gerarRelatorioMensal(mesAtual, anoAtual);
+}
+
+/** Verifica inconsistencias entre mensalidades e caixa */
+function verificarInconsistencias(mes, ano) {
+  const container = document.getElementById("relatorio-container");
+  container.innerHTML = "";
+
+  const meses = ["", "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", 
+                 "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  const mesAnoStr = `${String(mes).padStart(2, "0")}/${ano}`;
+  
+  // Mensalidades pagas do periodo
+  const mensalidadesPagas = DataStore.state.data.mensalidades.filter(m => {
+    return m.status === "paga" && m.mesRef === mesAnoStr;
+  });
+  
+  // Entradas do caixa do periodo (categoria mensalidade, ativas)
+  const entradasCaixa = DataStore.state.data.caixa.filter(c => {
+    if (c.status === "cancelado") return false;
+    if (c.tipo !== "entrada") return false;
+    if (c.categoria !== "mensalidade") return false;
+    const dataC = new Date(c.data);
+    return (dataC.getMonth() + 1) === mes && dataC.getFullYear() === ano;
+  });
+
+  const totalMensalidades = mensalidadesPagas.reduce((sum, m) => sum + (m.valor || 0), 0);
+  const totalEntradasCaixa = entradasCaixa.reduce((sum, c) => sum + (c.valor || 0), 0);
+  const diferenca = totalMensalidades - totalEntradasCaixa;
+
+  // Criar mapa de mensalidades por aluno_id
+  const mensalidadesMap = new Map();
+  mensalidadesPagas.forEach(m => {
+    const key = m.aluno_id;
+    if (!mensalidadesMap.has(key)) mensalidadesMap.set(key, []);
+    mensalidadesMap.get(key).push(m);
+  });
+
+  // Criar mapa de entradas por aluno_id (usando descricao ou aluno_id se disponivel)
+  const entradasMap = new Map();
+  entradasCaixa.forEach(c => {
+    const key = c.aluno_id || c.descricao;
+    if (!entradasMap.has(key)) entradasMap.set(key, []);
+    entradasMap.get(key).push(c);
+  });
+
+  // Identificar mensalidades sem entrada correspondente no caixa
+  const semEntrada = [];
+  mensalidadesPagas.forEach(m => {
+    const aluno = DataStore.state.data.alunos.find(a => a.id === m.aluno_id);
+    const nomeAluno = aluno ? aluno.nome : "Aluno nao encontrado";
+    
+    // Procurar entrada correspondente no caixa
+    const entradaCorrespondente = entradasCaixa.find(c => 
+      c.aluno_id === m.aluno_id || 
+      (c.descricao && c.descricao.includes(nomeAluno) && c.descricao.includes(mesAnoStr))
+    );
+    
+    if (!entradaCorrespondente) {
+      semEntrada.push({
+        mensalidade: m,
+        nomeAluno: nomeAluno,
+        valor: m.valor
+      });
+    }
+  });
+
+  // Montar relatorio
+  let html = `
+    <h2 style="margin-bottom: 1rem;">Verificacao de Inconsistencias - ${meses[mes]}/${ano}</h2>
+    
+    <div class="dashboard-cards" style="margin-bottom: 1.5rem;">
+      <div class="summary-card">
+        <span class="card-title">Mensalidades Pagas</span>
+        <span class="card-value">${mensalidadesPagas.length}</span>
+        <span style="font-size: 0.85rem; color: var(--color-text-muted);">${formatarReais(totalMensalidades)}</span>
+      </div>
+      <div class="summary-card">
+        <span class="card-title">Entradas no Caixa</span>
+        <span class="card-value">${entradasCaixa.length}</span>
+        <span style="font-size: 0.85rem; color: var(--color-text-muted);">${formatarReais(totalEntradasCaixa)}</span>
+      </div>
+      <div class="summary-card">
+        <span class="card-title">Diferenca</span>
+        <span class="card-value" style="color: ${diferenca === 0 ? '#16a34a' : '#dc2626'};">${formatarReais(diferenca)}</span>
+        <span style="font-size: 0.85rem; color: var(--color-text-muted);">${diferenca === 0 ? 'OK' : 'Verificar'}</span>
+      </div>
+    </div>
+  `;
+
+  if (semEntrada.length > 0) {
+    html += `
+      <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <h3 style="color: #dc2626; margin-bottom: 1rem;">Mensalidades pagas SEM entrada no Caixa (${semEntrada.length})</h3>
+        <p style="color: var(--color-text-muted); margin-bottom: 1rem; font-size: 0.9rem;">
+          Estas mensalidades foram marcadas como pagas, mas nao geraram lancamento no Caixa.
+          Isso pode ocorrer se a mensalidade foi editada manualmente para "paga" sem usar o botao de pagamento.
+        </p>
+        <div class="cards-grid">
+    `;
+    
+    semEntrada.forEach(item => {
+      html += `
+        <div class="student-card" style="border-left: 4px solid #dc2626;">
+          <div class="card-header">
+            <strong>${item.nomeAluno}</strong>
+          </div>
+          <div class="card-body">
+            <p><strong>Valor:</strong> ${formatarReais(item.valor)}</p>
+            <p><strong>Referencia:</strong> ${item.mensalidade.mesRef}</p>
+            <p><strong>Data Pagamento:</strong> ${item.mensalidade.dataPagamento || 'N/A'}</p>
+          </div>
+          <div class="card-actions">
+            <button class="btn-sm btn-primary" onclick="criarEntradaFaltante('${item.mensalidade.id}')">Criar Entrada no Caixa</button>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += `</div></div>`;
+  } else if (diferenca === 0) {
+    html += `
+      <div style="background: var(--color-card); border: 1px solid #16a34a; border-radius: 8px; padding: 1.5rem; text-align: center;">
+        <h3 style="color: #16a34a;">Tudo certo!</h3>
+        <p style="color: var(--color-text-muted);">Todas as mensalidades pagas tem entrada correspondente no Caixa.</p>
+      </div>
+    `;
+  } else {
+    html += `
+      <div style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1.5rem;">
+        <h3 style="color: #f59e0b; margin-bottom: 0.5rem;">Diferenca detectada</h3>
+        <p style="color: var(--color-text-muted);">
+          Existe uma diferenca de ${formatarReais(Math.abs(diferenca))} entre mensalidades e caixa.
+          Pode haver entradas duplicadas ou valores diferentes.
+        </p>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+/** Cria entrada no caixa para mensalidade paga que nao gerou lancamento */
+function criarEntradaFaltante(mensalidadeId) {
+  const mensalidade = DataStore.state.data.mensalidades.find(m => m.id === mensalidadeId);
+  if (!mensalidade) {
+    alert("Mensalidade nao encontrada");
+    return;
+  }
+
+  const aluno = DataStore.state.data.alunos.find(a => a.id === mensalidade.aluno_id);
+  const nomeAluno = aluno ? aluno.nome : "Aluno";
+  
+  // Criar entrada no caixa
+  DataStore.state.data.caixa.push({
+    id: crypto.randomUUID(),
+    tipo: "entrada",
+    categoria: "mensalidade",
+    descricao: `Mensalidade ${mensalidade.mesRef} - ${nomeAluno}`,
+    valor: mensalidade.valor,
+    data: mensalidade.dataPagamento || new Date().toISOString().split("T")[0],
+    formaPagamento: mensalidade.formaPagamento || "dinheiro",
+    aluno_id: mensalidade.aluno_id,
+    createdAt: new Date().toISOString()
+  });
+
+  DataStore.save();
+  alert("Entrada criada no Caixa com sucesso!");
+  
+  // Recarregar verificacao
+  const mes = parseInt(document.getElementById("relatorio-mes").value);
+  const ano = parseInt(document.getElementById("relatorio-ano").value);
+  verificarInconsistencias(mes, ano);
 }
 
 /** Gera relatório mensal */
