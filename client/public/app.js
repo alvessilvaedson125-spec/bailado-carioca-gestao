@@ -6100,11 +6100,14 @@ function verificarInconsistencias(mes, ano) {
     return m.status === "paga" && m.mesRef === mesAnoStr;
   });
   
-  // Entradas do caixa do periodo (categoria mensalidade, ativas)
+  // Entradas do caixa do periodo (entradas de mensalidade, ativas)
   const entradasCaixa = DataStore.state.data.caixa.filter(c => {
     if (c.status === "cancelado") return false;
     if (c.tipo !== "entrada") return false;
-    if (c.categoria !== "mensalidade") return false;
+    // Identificar entradas de mensalidade por categoria OU por descricao contendo "Mensalidade"
+    const isMensalidade = c.categoria === "mensalidade" || 
+                          (c.descricao && c.descricao.toLowerCase().includes("mensalidade"));
+    if (!isMensalidade) return false;
     const dataC = new Date(c.data);
     return (dataC.getMonth() + 1) === mes && dataC.getFullYear() === ano;
   });
