@@ -4184,7 +4184,7 @@ function renderizarPrevia(dados, listaContainer, resumoContainer) {
 function executarDisparoMensalidades(dados) {
   dados.elegiveis.forEach(item => {
     const novaMensalidade = {
-      id: gerarId(),
+      id: crypto.randomUUID(),
       aluno_id: item.aluno.id,
       mes: dados.mes,
       ano: dados.ano,
