@@ -3517,6 +3517,16 @@ function renderMensalidades() {
   btnDisparo.onclick = () => abrirModalDisparoMultiplo();
   header.appendChild(btnDisparo);
 
+  const btnLimparPendentes = document.createElement("button");
+  btnLimparPendentes.id = "btn-limpar-pendentes";
+  btnLimparPendentes.className = "btn-secondary";
+  btnLimparPendentes.style.cssText = "background: #fef2f2; color: #dc2626; border-color: #fecaca;";
+  btnLimparPendentes.textContent = "Limpar Pendentes";
+  btnLimparPendentes.setAttribute("data-testid", "button-limpar-pendentes");
+  btnLimparPendentes.onclick = () => executarLimpezaPendentes();
+  btnLimparPendentes.style.display = "none";
+  header.appendChild(btnLimparPendentes);
+
   UI.content.appendChild(header);
 
   // Linha de filtros
@@ -3591,6 +3601,69 @@ function aplicarFiltrosMensalidades() {
   renderCardsMensalidades(statusFiltro, unidadeId, turmaId);
 }
 
+/** Executa limpeza de mensalidades pendentes (soft delete) */
+function executarLimpezaPendentes() {
+  const unidadeId = document.getElementById("filtro-unidade-mens")?.value || "";
+  const turmaId = document.getElementById("filtro-turma-mens")?.value || "";
+  
+  // Obter mensalidades pendentes conforme filtros
+  let pendentes = DataStore.state.data.mensalidades.filter(m => m.status === "pendente");
+  
+  // Aplicar filtros de unidade/turma
+  if (unidadeId || turmaId) {
+    pendentes = pendentes.filter(m => {
+      const aluno = DataStore.findById("alunos", m.aluno_id);
+      if (!aluno) return false;
+      
+      if (turmaId) {
+        return alunoEmTurma(aluno, turmaId);
+      }
+      
+      if (unidadeId) {
+        const turmasDoAluno = getTurmasIds(aluno);
+        return turmasDoAluno.some(tid => {
+          const turma = DataStore.findById("turmas", tid);
+          return turma && turma.unidade_id === unidadeId;
+        });
+      }
+      
+      return true;
+    });
+  }
+  
+  if (pendentes.length === 0) {
+    alert("Nenhuma mensalidade pendente encontrada com os filtros atuais.");
+    return;
+  }
+  
+  // Confirmacao
+  const confirmMsg = `Voce esta prestes a cancelar ${pendentes.length} mensalidade(s) pendente(s).\n\nEsta acao nao pode ser desfeita.\n\nDeseja continuar?`;
+  if (!confirm(confirmMsg)) {
+    return;
+  }
+  
+  // Executar cancelamento
+  let canceladas = 0;
+  pendentes.forEach(mens => {
+    // Atualizar status para cancelada
+    mens.status = "cancelada";
+    
+    // Registrar no historico do aluno
+    adicionarEventoAluno(mens.aluno_id, `Mensalidade cancelada - competencia ${mens.mes}/${mens.ano}`);
+    
+    canceladas++;
+  });
+  
+  // Salvar
+  DataStore.save();
+  
+  // Feedback
+  alert(`${canceladas} mensalidade(s) cancelada(s) com sucesso.`);
+  
+  // Atualizar lista
+  aplicarFiltrosMensalidades();
+}
+
 /** Renderiza cards de mensalidades */
 function renderCardsMensalidades(statusFiltro, unidadeId = "", turmaId = "") {
   const container = document.getElementById("mensalidades-container");
@@ -3631,14 +3704,20 @@ function renderCardsMensalidades(statusFiltro, unidadeId = "", turmaId = "") {
     return dataB.localeCompare(dataA);
   });
 
-  if (mensalidades.length === 0) {
+  // Separar pagas e pendentes (excluir canceladas)
+  const pendentes = mensalidades.filter(m => m.status === "pendente");
+  const pagas = mensalidades.filter(m => m.status === "paga");
+
+  // Atualizar visibilidade do botao Limpar Pendentes
+  const btnLimpar = document.getElementById("btn-limpar-pendentes");
+  if (btnLimpar) {
+    btnLimpar.style.display = pendentes.length > 0 ? "inline-block" : "none";
+  }
+
+  if (mensalidades.length === 0 || (pendentes.length === 0 && pagas.length === 0)) {
     container.innerHTML = '<p style="color: #64748b;">Nenhuma mensalidade encontrada com os filtros aplicados.</p>';
     return;
   }
-
-  // Separar pagas e pendentes
-  const pendentes = mensalidades.filter(m => m.status !== "paga");
-  const pagas = mensalidades.filter(m => m.status === "paga");
 
   // Renderizar pendentes em lista simples
   if (pendentes.length > 0 && statusFiltro !== "paga") {
