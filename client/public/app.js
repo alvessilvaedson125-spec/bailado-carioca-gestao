@@ -3995,10 +3995,15 @@ function abrirModalDisparoMultiplo() {
       return;
     }
 
-    executarDisparoMensalidades(dadosPrevia);
-    overlay.remove();
-    alert(`${dadosPrevia.elegiveis.length} mensalidade(s) gerada(s) com sucesso!`);
-    UI.navigate("mensalidades");
+    try {
+      executarDisparoMensalidades(dadosPrevia);
+      overlay.remove();
+      alert(`${dadosPrevia.elegiveis.length} mensalidade(s) gerada(s) com sucesso!`);
+      UI.navigate("mensalidades");
+    } catch (err) {
+      console.error("Erro no disparo:", err);
+      alert("Erro ao gerar mensalidades. Verifique o console.");
+    }
   };
 
   btnCancelar.onclick = () => overlay.remove();
@@ -4023,8 +4028,17 @@ function calcularDisparoMensalidades(tipo, selecaoId, mes, ano) {
     // Alunos vinculados a esta turma
     alunosCandidatos = alunos.filter(a => alunoEmTurma(a, selecaoId));
   } else {
-    // Alunos vinculados a esta unidade
-    alunosCandidatos = alunos.filter(a => a.unidade_id === selecaoId);
+    // Alunos vinculados a turmas desta unidade
+    const turmasDaUnidade = turmas.filter(t => t.unidade_id === selecaoId && t.ativa !== false);
+    const alunosSet = new Set();
+    turmasDaUnidade.forEach(turma => {
+      alunos.forEach(a => {
+        if (alunoEmTurma(a, turma.id) && !alunosSet.has(a.id)) {
+          alunosSet.add(a.id);
+          alunosCandidatos.push(a);
+        }
+      });
+    });
   }
 
   alunosCandidatos.forEach(aluno => {
