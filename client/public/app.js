@@ -2385,8 +2385,23 @@ function abrirModalAluno(alunoExistente = null) {
   modal.className = "modal-card";
 
   const isEdicao = !!alunoExistente;
-  const turmaAtual = alunoExistente ? DataStore.findById("turmas", alunoExistente.turma) : null;
-  const unidadeAtual = turmaAtual ? DataStore.findById("unidades", turmaAtual.unidade_id) : null;
+  
+  // Obter turmas atuais do aluno (suporte a modelo antigo e novo)
+  const turmasAtuaisIds = alunoExistente ? getTurmasIds(alunoExistente) : [];
+  
+  // Obter unidades das turmas selecionadas
+  const getUnidadesTexto = (turmaIds) => {
+    if (!turmaIds || turmaIds.length === 0) return "";
+    const unidades = new Set();
+    turmaIds.forEach(tid => {
+      const turma = DataStore.findById("turmas", tid);
+      if (turma) {
+        const unidade = DataStore.findById("unidades", turma.unidade_id);
+        unidades.add(unidade?.nome || turma.unidade || "");
+      }
+    });
+    return Array.from(unidades).filter(u => u).join(", ");
+  };
 
   modal.innerHTML = `
     <h2 class="modal-title">${isEdicao ? "Editar Aluno" : "Novo Aluno"}</h2>
@@ -2394,96 +2409,112 @@ function abrirModalAluno(alunoExistente = null) {
     <div class="modal-grid">
       <div class="field">
         <label>Nome *</label>
-        <input id="nome" placeholder="Nome completo" value="${alunoExistente?.nome || ""}">
+        <input id="nome" data-testid="input-nome" placeholder="Nome completo" value="${alunoExistente?.nome || ""}">
       </div>
 
       <div class="field">
         <label>Telefone *</label>
-        <input id="telefone" placeholder="(00) 00000-0000" value="${alunoExistente?.telefone || ""}">
+        <input id="telefone" data-testid="input-telefone" placeholder="(00) 00000-0000" value="${alunoExistente?.telefone || ""}">
       </div>
 
       <div class="field">
         <label>E-mail</label>
-        <input id="email" type="email" placeholder="email@exemplo.com" value="${alunoExistente?.email || ""}">
+        <input id="email" data-testid="input-email" type="email" placeholder="email@exemplo.com" value="${alunoExistente?.email || ""}">
       </div>
 
       <div class="field">
         <label>CPF</label>
-        <input id="cpf" placeholder="000.000.000-00" value="${alunoExistente?.cpf || ""}">
+        <input id="cpf" data-testid="input-cpf" placeholder="000.000.000-00" value="${alunoExistente?.cpf || ""}">
+      </div>
+
+      <div class="field" style="grid-column: span 2;">
+        <label>Turmas * (selecione uma ou mais)</label>
+        <div id="turmas-container" style="border: 1px solid #d1d5db; border-radius: 6px; padding: 0.75rem; max-height: 180px; overflow-y: auto; background: #fff;">
+        </div>
+        <small style="color: #64748b; margin-top: 0.25rem; display: block;">Marque as turmas em que o aluno participara</small>
       </div>
 
       <div class="field">
-        <label>Turma *</label>
-        <select id="turma">
-          <option value="">Selecione uma turma</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Unidade</label>
-        <input id="unidade" readonly style="background: #f1f5f9;" value="${unidadeAtual?.nome || turmaAtual?.unidade || ""}">
+        <label>Unidade(s)</label>
+        <input id="unidade" readonly style="background: #f1f5f9;" value="${getUnidadesTexto(turmasAtuaisIds)}">
       </div>
 
       <div class="field">
         <label>Tipo de Matrícula</label>
-        <select id="tipo">
+        <select id="tipo" data-testid="select-tipo">
           <option value="Normal" ${alunoExistente?.tipo === "Normal" ? "selected" : ""}>Normal</option>
           <option value="Casal" ${alunoExistente?.tipo === "Casal" ? "selected" : ""}>Casal</option>
-          <option value="Múltiplas" ${alunoExistente?.tipo === "Múltiplas" ? "selected" : ""}>Múltiplas turmas</option>
+          <option value="Múltiplas" ${alunoExistente?.tipo === "Múltiplas" ? "selected" : ""}>Multiplas turmas</option>
         </select>
       </div>
 
       <div class="field">
         <label>Mensalidade (R$)</label>
-        <input id="mensalidade" type="number" placeholder="0.00" value="${alunoExistente?.mensalidade || ""}">
+        <input id="mensalidade" data-testid="input-mensalidade" type="number" placeholder="0.00" value="${alunoExistente?.mensalidade || ""}">
       </div>
     </div>
 
     <div class="modal-actions">
-      <button class="modal-btn-secondary">Cancelar</button>
-      <button class="modal-btn-primary">${isEdicao ? "Salvar" : "Criar"}</button>
+      <button class="modal-btn-secondary" data-testid="button-cancelar">Cancelar</button>
+      <button class="modal-btn-primary" data-testid="button-salvar">${isEdicao ? "Salvar" : "Criar"}</button>
     </div>
   `;
 
   modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
 
-  const selectTurma = modal.querySelector("#turma");
+  const turmasContainer = modal.querySelector("#turmas-container");
   const inputUnidade = modal.querySelector("#unidade");
 
-  // Popular select de turmas
-  DataStore.state.data.turmas
-    .filter(t => t.ativa !== false)
-    .forEach(turma => {
-      const option = document.createElement("option");
-      option.value = turma.id;
-      option.textContent = `${turma.nome} (${turma.nivel})`;
-      if (alunoExistente?.turma === turma.id) option.selected = true;
-      selectTurma.appendChild(option);
+  // Popular checkboxes de turmas
+  const turmasAtivas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
+  
+  if (turmasAtivas.length === 0) {
+    turmasContainer.innerHTML = '<p style="color: #64748b; margin: 0;">Nenhuma turma cadastrada</p>';
+  } else {
+    turmasAtivas.forEach(turma => {
+      const unidade = DataStore.findById("unidades", turma.unidade_id);
+      const isChecked = turmasAtuaisIds.includes(turma.id);
+      
+      const checkboxDiv = document.createElement("div");
+      checkboxDiv.style.cssText = "display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid #f1f5f9;";
+      checkboxDiv.innerHTML = `
+        <input type="checkbox" id="turma-${turma.id}" value="${turma.id}" data-testid="checkbox-turma-${turma.id}" ${isChecked ? "checked" : ""} style="width: 18px; height: 18px; cursor: pointer;">
+        <label for="turma-${turma.id}" style="cursor: pointer; flex: 1;">
+          <strong>${turma.nome}</strong> - ${turma.nivel}
+          ${unidade ? `<span style="color: #64748b; font-size: 0.85rem;">(${unidade.nome})</span>` : ""}
+        </label>
+      `;
+      turmasContainer.appendChild(checkboxDiv);
     });
+  }
 
-  // Atualizar unidade ao mudar turma
-  selectTurma.onchange = () => {
-    const turmaId = selectTurma.value;
-    const turma = DataStore.findById("turmas", turmaId);
-    const unidade = turma ? DataStore.findById("unidades", turma.unidade_id) : null;
-    inputUnidade.value = unidade?.nome || turma?.unidade || "";
+  // Atualizar unidade ao mudar seleção de turmas
+  const atualizarUnidades = () => {
+    const checkboxes = turmasContainer.querySelectorAll('input[type="checkbox"]:checked');
+    const turmaIds = Array.from(checkboxes).map(cb => cb.value);
+    inputUnidade.value = getUnidadesTexto(turmaIds);
   };
 
+  turmasContainer.addEventListener("change", atualizarUnidades);
+
   modal.querySelector(".modal-btn-primary").onclick = () => {
-    const nome = modal.querySelector("#nome").value;
-    const telefone = modal.querySelector("#telefone").value;
-    const turmaId = selectTurma.value;
+    const nome = modal.querySelector("#nome").value.trim();
+    const telefone = modal.querySelector("#telefone").value.trim();
+    
+    // Obter turmas selecionadas
+    const checkboxes = turmasContainer.querySelectorAll('input[type="checkbox"]:checked');
+    const turmasSelecionadas = Array.from(checkboxes).map(cb => cb.value);
 
     if (!nome) {
-      alert("Nome é obrigatório!");
+      alert("Nome e obrigatorio!");
       return;
     }
     if (!telefone) {
-      alert("Telefone é obrigatório!");
+      alert("Telefone e obrigatorio!");
       return;
     }
-    if (!turmaId) {
-      alert("Selecione uma turma!");
+    if (turmasSelecionadas.length === 0) {
+      alert("Selecione ao menos uma turma!");
       return;
     }
 
@@ -2495,7 +2526,8 @@ function abrirModalAluno(alunoExistente = null) {
       telefone: telefone,
       email: email || null,
       cpf: cpf || null,
-      turma: turmaId,
+      turma: turmasSelecionadas[0], // Primeiro ID para compatibilidade
+      turmas_ids: turmasSelecionadas, // Array completo
       unidade: inputUnidade.value,
       tipo: modal.querySelector("#tipo").value,
       mensalidade: Number(modal.querySelector("#mensalidade").value),
