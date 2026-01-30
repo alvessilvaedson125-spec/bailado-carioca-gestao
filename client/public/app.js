@@ -6093,11 +6093,16 @@ function verificarInconsistencias(mes, ano) {
 
   const meses = ["", "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho", 
                  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-  const mesAnoStr = `${String(mes).padStart(2, "0")}/${ano}`;
+  const mesStr = String(mes).padStart(2, "0");
+  const anoStr = String(ano);
   
-  // Mensalidades pagas do periodo
+  // Mensalidades pagas do periodo (mes/ano podem ser strings ou numeros)
   const mensalidadesPagas = DataStore.state.data.mensalidades.filter(m => {
-    return m.status === "paga" && m.mesRef === mesAnoStr;
+    if (m.status !== "paga") return false;
+    // Comparar mes e ano (podem estar em formatos diferentes)
+    const mMes = String(m.mes).padStart(2, "0");
+    const mAno = String(m.ano);
+    return mMes === mesStr && mAno === anoStr;
   });
   
   // Entradas do caixa do periodo (entradas de mensalidade, ativas)
