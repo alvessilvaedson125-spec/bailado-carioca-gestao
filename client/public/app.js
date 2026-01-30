@@ -6132,6 +6132,7 @@ function verificarInconsistencias(mes, ano) {
                  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
   const mesStr = String(mes).padStart(2, "0");
   const anoStr = String(ano);
+  const mesAnoStr = `${mesStr}/${anoStr}`;
   
   // Mensalidades pagas do periodo (mes/ano podem ser strings ou numeros)
   const mensalidadesPagas = DataStore.state.data.mensalidades.filter(m => {
