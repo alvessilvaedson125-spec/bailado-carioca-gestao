@@ -3954,6 +3954,8 @@ function abrirModalMensalidade(mensExistente = null) {
   modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
 
   const selectAluno = modal.querySelector("#aluno");
+  const inputValor = modal.querySelector("#valor");
+  
   DataStore.state.data.alunos
     .filter(a => a.status === "ativo" && !isBolsista(a))
     .forEach(aluno => {
@@ -3963,6 +3965,41 @@ function abrirModalMensalidade(mensExistente = null) {
       if (mensExistente?.aluno_id === aluno.id) option.selected = true;
       selectAluno.appendChild(option);
     });
+
+  // Calcular valor automatico baseado nas turmas do aluno
+  selectAluno.onchange = () => {
+    if (isEdicao) return; // Nao alterar valor em edicao
+    const alunoId = selectAluno.value;
+    if (!alunoId) {
+      inputValor.value = "";
+      return;
+    }
+    const aluno = DataStore.findById("alunos", alunoId);
+    if (!aluno) return;
+
+    const turmasIds = getTurmasIds(aluno);
+    let valorTotal = 0;
+
+    if (turmasIds.length > 1) {
+      // MULTI-TURMA: Somar valores de todas as turmas
+      turmasIds.forEach(turmaId => {
+        const turma = DataStore.findById("turmas", turmaId);
+        if (turma && turma.ativa !== false) {
+          valorTotal += parseFloat(turma.valor) || 0;
+        }
+      });
+    } else {
+      // SINGLE-TURMA: Usar mensalidade do aluno
+      valorTotal = parseFloat(aluno.mensalidade) || 0;
+    }
+
+    inputValor.value = valorTotal > 0 ? valorTotal : "";
+  };
+
+  // Disparar calculo inicial se editando
+  if (mensExistente?.aluno_id) {
+    selectAluno.value = mensExistente.aluno_id;
+  }
 
   modal.querySelector(".modal-btn-primary").onclick = () => {
     const alunoId = selectAluno.value;
