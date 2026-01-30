@@ -6347,17 +6347,120 @@ function verificarInconsistencias(mes, ano) {
     }
   }
 
-  // Se ha diferenca de valores mas mesma quantidade, listar comparacao
+  // Se ha diferenca de valores mas mesma quantidade, listar comparacao detalhada
   if (diferenca !== 0 && entradasCaixa.length === mensalidadesPagas.length) {
+    // Criar mapa de mensalidades por aluno_id para comparacao
+    const divergencias = [];
+    
+    mensalidadesPagas.forEach(m => {
+      const aluno = DataStore.state.data.alunos.find(a => a.id === m.aluno_id);
+      const nomeAluno = aluno ? aluno.nome : "Aluno desconhecido";
+      
+      // Procurar entrada correspondente (por aluno_id ou nome na descricao)
+      const entradaCorrespondente = entradasCaixa.find(c => {
+        if (c.aluno_id === m.aluno_id) return true;
+        if (c.descricao && c.descricao.includes(nomeAluno)) return true;
+        return false;
+      });
+      
+      if (entradaCorrespondente) {
+        const valorMensalidade = parseFloat(m.valor) || 0;
+        const valorEntrada = parseFloat(entradaCorrespondente.valor) || 0;
+        const diff = valorEntrada - valorMensalidade;
+        
+        if (Math.abs(diff) > 0.01) {
+          divergencias.push({
+            aluno: nomeAluno,
+            aluno_id: m.aluno_id,
+            mensalidade: m,
+            entrada: entradaCorrespondente,
+            valorMensalidade,
+            valorEntrada,
+            diferenca: diff
+          });
+        }
+      }
+    });
+    
+    // Verificar tambem entradas sem mensalidade correspondente
+    const entradasSemMensalidade = [];
+    entradasCaixa.forEach(c => {
+      const temMensalidade = mensalidadesPagas.some(m => {
+        if (c.aluno_id && c.aluno_id === m.aluno_id) return true;
+        const aluno = DataStore.state.data.alunos.find(a => a.id === m.aluno_id);
+        if (aluno && c.descricao && c.descricao.includes(aluno.nome)) return true;
+        return false;
+      });
+      if (!temMensalidade) {
+        entradasSemMensalidade.push(c);
+      }
+    });
+
     html += `
       <div style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem;">
-        <h3 style="color: #f59e0b; margin-bottom: 0.5rem;">Diferenca de valores detectada</h3>
-        <p style="color: var(--color-text-muted);">
-          A quantidade de mensalidades e entradas e igual, mas os valores totais diferem em ${formatarReais(Math.abs(diferenca))}.
-          Verifique se alguma mensalidade ou entrada foi editada manualmente com valor incorreto.
-        </p>
-      </div>
+        <h3 style="color: #f59e0b; margin-bottom: 0.5rem;">Analise detalhada da diferenca de ${formatarReais(Math.abs(diferenca))}</h3>
     `;
+
+    if (divergencias.length > 0) {
+      html += `
+        <h4 style="color: var(--color-text-primary); margin: 1rem 0 0.5rem;">Divergencias de valores encontradas (${divergencias.length}):</h4>
+        <div class="cards-grid">
+      `;
+      divergencias.forEach(d => {
+        const corBorda = d.diferenca > 0 ? "#f59e0b" : "#dc2626";
+        const sinal = d.diferenca > 0 ? "+" : "";
+        html += `
+          <div class="student-card" style="border-left: 4px solid ${corBorda};">
+            <div class="card-header">
+              <strong>${d.aluno}</strong>
+              <span class="badge badge-warning">${sinal}${formatarReais(d.diferenca)}</span>
+            </div>
+            <div class="card-body">
+              <p><strong>Mensalidade:</strong> ${formatarReais(d.valorMensalidade)}</p>
+              <p><strong>Entrada Caixa:</strong> ${formatarReais(d.valorEntrada)}</p>
+              <p style="font-size: 0.85rem; color: var(--color-text-muted);">Ref: ${d.mensalidade.mesRef}</p>
+            </div>
+            <div class="card-actions">
+              <button class="btn-sm btn-primary" onclick="corrigirValorEntrada('${d.entrada.id}', ${d.valorMensalidade})">Corrigir para ${formatarReais(d.valorMensalidade)}</button>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+
+    if (entradasSemMensalidade.length > 0) {
+      html += `
+        <h4 style="color: var(--color-text-primary); margin: 1rem 0 0.5rem;">Entradas sem mensalidade correspondente (${entradasSemMensalidade.length}):</h4>
+        <div class="cards-grid">
+      `;
+      entradasSemMensalidade.forEach(e => {
+        html += `
+          <div class="student-card" style="border-left: 4px solid #dc2626;">
+            <div class="card-body">
+              <p><strong>Descricao:</strong> ${e.descricao || "N/A"}</p>
+              <p><strong>Valor:</strong> ${formatarReais(e.valor)}</p>
+              <p><strong>Data:</strong> ${e.data}</p>
+            </div>
+            <div class="card-actions">
+              <button class="btn-sm btn-muted" onclick="cancelarEntradaCaixa('${e.id}')">Cancelar</button>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    }
+
+    if (divergencias.length === 0 && entradasSemMensalidade.length === 0) {
+      html += `
+        <p style="color: var(--color-text-muted);">
+          Nao foi possivel identificar a origem exata da diferenca. 
+          A diferenca pode estar em entradas que nao sao de mensalidade (aula avulsa, outros).
+        </p>
+      `;
+    }
+
+    html += `</div>`;
   }
 
   container.innerHTML = html;
@@ -6377,6 +6480,26 @@ function cancelarEntradaCaixa(entradaId) {
     const ano = parseInt(document.getElementById("relatorio-ano").value);
     verificarInconsistencias(mes, ano);
   }
+}
+
+/** Corrige o valor de uma entrada do caixa para o valor correto da mensalidade */
+function corrigirValorEntrada(entradaId, valorCorreto) {
+  const entrada = DataStore.state.data.caixa.find(c => c.id === entradaId);
+  if (!entrada) {
+    alert("Entrada nao encontrada");
+    return;
+  }
+  
+  const valorAnterior = entrada.valor;
+  if (!confirm(`Corrigir valor de ${formatarReais(valorAnterior)} para ${formatarReais(valorCorreto)}?`)) return;
+  
+  entrada.valor = valorCorreto;
+  DataStore.save();
+  alert("Valor corrigido com sucesso!");
+  
+  const mes = parseInt(document.getElementById("relatorio-mes").value);
+  const ano = parseInt(document.getElementById("relatorio-ano").value);
+  verificarInconsistencias(mes, ano);
 }
 
 /** Cria entrada no caixa para mensalidade paga que nao gerou lancamento */
