@@ -6256,19 +6256,127 @@ function verificarInconsistencias(mes, ano) {
         <p style="color: var(--color-text-muted);">Todas as mensalidades pagas tem entrada correspondente no Caixa.</p>
       </div>
     `;
-  } else {
+  }
+
+  // Se ha mais entradas no caixa que mensalidades, listar as entradas extras
+  if (entradasCaixa.length > mensalidadesPagas.length) {
+    // Identificar entradas sem mensalidade correspondente
+    const entradasExtras = [];
+    entradasCaixa.forEach(c => {
+      // Procurar mensalidade correspondente
+      const mensalidadeCorrespondente = mensalidadesPagas.find(m => {
+        const aluno = DataStore.state.data.alunos.find(a => a.id === m.aluno_id);
+        const nomeAluno = aluno ? aluno.nome : "";
+        return c.aluno_id === m.aluno_id || 
+               (c.descricao && nomeAluno && c.descricao.includes(nomeAluno));
+      });
+      
+      if (!mensalidadeCorrespondente) {
+        entradasExtras.push(c);
+      }
+    });
+
+    // Agrupar por aluno para encontrar duplicatas
+    const entradasPorAluno = new Map();
+    entradasCaixa.forEach(c => {
+      const key = c.aluno_id || c.descricao || c.id;
+      if (!entradasPorAluno.has(key)) entradasPorAluno.set(key, []);
+      entradasPorAluno.get(key).push(c);
+    });
+
+    const duplicatas = [];
+    entradasPorAluno.forEach((entradas, key) => {
+      if (entradas.length > 1) {
+        duplicatas.push({ key, entradas });
+      }
+    });
+
+    if (duplicatas.length > 0 || entradasExtras.length > 0) {
+      html += `
+        <div style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem;">
+          <h3 style="color: #f59e0b; margin-bottom: 1rem;">Possiveis problemas encontrados</h3>
+      `;
+
+      if (duplicatas.length > 0) {
+        html += `<h4 style="color: var(--color-text-primary); margin-bottom: 0.5rem;">Possiveis entradas duplicadas (${duplicatas.length} alunos):</h4>`;
+        html += `<div class="cards-grid" style="margin-bottom: 1rem;">`;
+        duplicatas.forEach(dup => {
+          const primeiraEntrada = dup.entradas[0];
+          const nomeAluno = primeiraEntrada.aluno_nome || primeiraEntrada.descricao?.split(" - ")[1] || "N/A";
+          html += `
+            <div class="student-card" style="border-left: 4px solid #f59e0b;">
+              <div class="card-header">
+                <strong>${nomeAluno}</strong>
+                <span class="badge badge-warning">${dup.entradas.length} entradas</span>
+              </div>
+              <div class="card-body">
+                ${dup.entradas.map(e => `
+                  <p style="font-size: 0.85rem; margin: 0.25rem 0;">
+                    ${formatarReais(e.valor)} - ${e.data} 
+                    <button class="btn-sm btn-muted" onclick="cancelarEntradaCaixa('${e.id}')" style="margin-left: 0.5rem;">Cancelar</button>
+                  </p>
+                `).join("")}
+              </div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+
+      if (entradasExtras.length > 0) {
+        html += `<h4 style="color: var(--color-text-primary); margin-bottom: 0.5rem;">Entradas sem mensalidade correspondente (${entradasExtras.length}):</h4>`;
+        html += `<div class="cards-grid">`;
+        entradasExtras.forEach(e => {
+          html += `
+            <div class="student-card" style="border-left: 4px solid #dc2626;">
+              <div class="card-body">
+                <p><strong>Descricao:</strong> ${e.descricao || "N/A"}</p>
+                <p><strong>Valor:</strong> ${formatarReais(e.valor)}</p>
+                <p><strong>Data:</strong> ${e.data}</p>
+              </div>
+              <div class="card-actions">
+                <button class="btn-sm btn-muted" onclick="cancelarEntradaCaixa('${e.id}')">Cancelar Entrada</button>
+              </div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+
+      html += `</div>`;
+    }
+  }
+
+  // Se ha diferenca de valores mas mesma quantidade, listar comparacao
+  if (diferenca !== 0 && entradasCaixa.length === mensalidadesPagas.length) {
     html += `
-      <div style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1.5rem;">
-        <h3 style="color: #f59e0b; margin-bottom: 0.5rem;">Diferenca detectada</h3>
+      <div style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem;">
+        <h3 style="color: #f59e0b; margin-bottom: 0.5rem;">Diferenca de valores detectada</h3>
         <p style="color: var(--color-text-muted);">
-          Existe uma diferenca de ${formatarReais(Math.abs(diferenca))} entre mensalidades e caixa.
-          Pode haver entradas duplicadas ou valores diferentes.
+          A quantidade de mensalidades e entradas e igual, mas os valores totais diferem em ${formatarReais(Math.abs(diferenca))}.
+          Verifique se alguma mensalidade ou entrada foi editada manualmente com valor incorreto.
         </p>
       </div>
     `;
   }
 
   container.innerHTML = html;
+}
+
+/** Cancela uma entrada do caixa */
+function cancelarEntradaCaixa(entradaId) {
+  if (!confirm("Tem certeza que deseja cancelar esta entrada?")) return;
+  
+  const entrada = DataStore.state.data.caixa.find(c => c.id === entradaId);
+  if (entrada) {
+    entrada.status = "cancelado";
+    DataStore.save();
+    alert("Entrada cancelada!");
+    
+    const mes = parseInt(document.getElementById("relatorio-mes").value);
+    const ano = parseInt(document.getElementById("relatorio-ano").value);
+    verificarInconsistencias(mes, ano);
+  }
 }
 
 /** Cria entrada no caixa para mensalidade paga que nao gerou lancamento */
