@@ -4684,12 +4684,12 @@ function renderCaixa() {
   const filtroContainer = document.createElement("div");
   filtroContainer.style.cssText = "margin-bottom: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;";
   filtroContainer.innerHTML = `
-    <label style="font-weight: 500; color: #374151;">Período:</label>
-    <select id="filtroMes" data-testid="select-filter-month" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px;">
+    <label style="font-weight: 500; color: var(--color-text-primary);">Periodo:</label>
+    <select id="filtroMes" data-testid="select-filter-month" style="padding: 0.5rem; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-input); color: var(--color-text-primary);">
       <option value="0">Todos os meses</option>
       <option value="1">Janeiro</option>
       <option value="2">Fevereiro</option>
-      <option value="3">Março</option>
+      <option value="3">Marco</option>
       <option value="4">Abril</option>
       <option value="5">Maio</option>
       <option value="6">Junho</option>
@@ -4700,18 +4700,24 @@ function renderCaixa() {
       <option value="11">Novembro</option>
       <option value="12">Dezembro</option>
     </select>
-    <select id="filtroAno" data-testid="select-filter-year" style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px;">
+    <select id="filtroAno" data-testid="select-filter-year" style="padding: 0.5rem; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-input); color: var(--color-text-primary);">
       <option value="0">Todos os anos</option>
+    </select>
+    <select id="filtroTipo" data-testid="select-filter-type" style="padding: 0.5rem; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-input); color: var(--color-text-primary);">
+      <option value="todos">Todos os tipos</option>
+      <option value="entrada">Entradas</option>
+      <option value="saida">Saidas</option>
     </select>
     <label style="margin-left: 1rem; display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
       <input type="checkbox" id="mostrarCancelados" data-testid="checkbox-show-cancelled" style="cursor: pointer;">
-      <span style="font-size: 0.9rem; color: #6b7280;">Mostrar cancelados</span>
+      <span style="font-size: 0.9rem; color: var(--color-text-muted);">Mostrar cancelados</span>
     </label>
   `;
   UI.content.appendChild(filtroContainer);
 
   const selectMes = filtroContainer.querySelector("#filtroMes");
   const selectAno = filtroContainer.querySelector("#filtroAno");
+  const selectTipo = filtroContainer.querySelector("#filtroTipo");
   const checkMostrarCancelados = filtroContainer.querySelector("#mostrarCancelados");
 
   // Popular anos (do ano atual até 5 anos atrás)
@@ -4761,6 +4767,12 @@ function renderCaixa() {
     // Filtrar por status (se não mostrar cancelados)
     if (!mostrarCancelados) {
       lancamentosFiltrados = lancamentosFiltrados.filter(lanc => lanc.status !== "cancelado");
+    }
+
+    // Filtrar por tipo (entrada/saida)
+    const tipoSelecionado = selectTipo.value;
+    if (tipoSelecionado !== "todos") {
+      lancamentosFiltrados = lancamentosFiltrados.filter(lanc => lanc.tipo === tipoSelecionado);
     }
 
     // Calcular totais do período (APENAS lançamentos ativos)
@@ -4892,6 +4904,7 @@ function renderCaixa() {
   // Event listeners para os filtros
   selectMes.onchange = atualizarCaixa;
   selectAno.onchange = atualizarCaixa;
+  selectTipo.onchange = atualizarCaixa;
   checkMostrarCancelados.onchange = atualizarCaixa;
 
   // Renderizar inicial
