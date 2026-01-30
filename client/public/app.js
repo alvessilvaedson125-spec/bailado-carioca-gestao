@@ -3517,90 +3517,263 @@ function renderMensalidades() {
   btnDisparo.onclick = () => abrirModalDisparoMultiplo();
   header.appendChild(btnDisparo);
 
+  UI.content.appendChild(header);
+
+  // Linha de filtros
+  const filtrosDiv = document.createElement("div");
+  filtrosDiv.style.cssText = "margin-bottom: 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;";
+
+  // Filtro Unidade
+  const selectUnidade = document.createElement("select");
+  selectUnidade.id = "filtro-unidade-mens";
+  selectUnidade.setAttribute("data-testid", "select-filtro-unidade");
+  selectUnidade.style.padding = "0.5rem";
+  selectUnidade.innerHTML = '<option value="">Todas as unidades</option>';
+  DataStore.state.data.unidades.filter(u => u.ativa !== false).forEach(u => {
+    selectUnidade.innerHTML += `<option value="${u.id}">${u.nome}</option>`;
+  });
+  filtrosDiv.appendChild(selectUnidade);
+
+  // Filtro Turma
+  const selectTurma = document.createElement("select");
+  selectTurma.id = "filtro-turma-mens";
+  selectTurma.setAttribute("data-testid", "select-filtro-turma");
+  selectTurma.style.padding = "0.5rem";
+  selectTurma.innerHTML = '<option value="">Todas as turmas</option>';
+  DataStore.state.data.turmas.filter(t => t.ativa !== false).forEach(t => {
+    selectTurma.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
+  });
+  filtrosDiv.appendChild(selectTurma);
+
+  // Filtro Status
   const selectStatus = document.createElement("select");
+  selectStatus.id = "filtro-status-mens";
+  selectStatus.setAttribute("data-testid", "select-filtro-status");
   selectStatus.style.padding = "0.5rem";
   selectStatus.innerHTML = `
     <option value="todos">Todos</option>
     <option value="pendente">Pendentes</option>
     <option value="paga">Pagas</option>
   `;
-  selectStatus.onchange = () => renderCardsMensalidades(selectStatus.value);
-  header.appendChild(selectStatus);
+  filtrosDiv.appendChild(selectStatus);
 
-  UI.content.appendChild(header);
+  // Atualizar turmas quando unidade mudar
+  selectUnidade.onchange = () => {
+    const unidadeId = selectUnidade.value;
+    selectTurma.innerHTML = '<option value="">Todas as turmas</option>';
+    let turmasFiltradas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
+    if (unidadeId) {
+      turmasFiltradas = turmasFiltradas.filter(t => t.unidade_id === unidadeId);
+    }
+    turmasFiltradas.forEach(t => {
+      selectTurma.innerHTML += `<option value="${t.id}">${t.nome}</option>`;
+    });
+    aplicarFiltrosMensalidades();
+  };
+
+  selectTurma.onchange = () => aplicarFiltrosMensalidades();
+  selectStatus.onchange = () => aplicarFiltrosMensalidades();
+
+  UI.content.appendChild(filtrosDiv);
 
   const container = document.createElement("div");
   container.id = "mensalidades-container";
   UI.content.appendChild(container);
 
-  renderCardsMensalidades("todos");
+  aplicarFiltrosMensalidades();
+}
+
+/** Aplica filtros e renderiza mensalidades */
+function aplicarFiltrosMensalidades() {
+  const unidadeId = document.getElementById("filtro-unidade-mens")?.value || "";
+  const turmaId = document.getElementById("filtro-turma-mens")?.value || "";
+  const statusFiltro = document.getElementById("filtro-status-mens")?.value || "todos";
+  renderCardsMensalidades(statusFiltro, unidadeId, turmaId);
 }
 
 /** Renderiza cards de mensalidades */
-function renderCardsMensalidades(statusFiltro) {
+function renderCardsMensalidades(statusFiltro, unidadeId = "", turmaId = "") {
   const container = document.getElementById("mensalidades-container");
   container.innerHTML = "";
 
   let mensalidades = [...DataStore.state.data.mensalidades];
 
+  // Filtro por status
   if (statusFiltro !== "todos") {
     mensalidades = mensalidades.filter(m => m.status === statusFiltro);
   }
 
+  // Filtro por unidade/turma (via aluno)
+  if (unidadeId || turmaId) {
+    mensalidades = mensalidades.filter(m => {
+      const aluno = DataStore.findById("alunos", m.aluno_id);
+      if (!aluno) return false;
+
+      if (turmaId) {
+        return alunoEmTurma(aluno, turmaId);
+      }
+
+      if (unidadeId) {
+        const turmasDoAluno = getTurmasIds(aluno);
+        return turmasDoAluno.some(tid => {
+          const turma = DataStore.findById("turmas", tid);
+          return turma && turma.unidade_id === unidadeId;
+        });
+      }
+
+      return true;
+    });
+  }
+
   mensalidades.sort((a, b) => {
-    const dataA = `${a.ano}-${a.mes}`;
-    const dataB = `${b.ano}-${b.mes}`;
+    const dataA = `${a.ano}-${String(a.mes).padStart(2, "0")}`;
+    const dataB = `${b.ano}-${String(b.mes).padStart(2, "0")}`;
     return dataB.localeCompare(dataA);
   });
 
   if (mensalidades.length === 0) {
-    container.innerHTML = '<p style="color: #64748b;">Nenhuma mensalidade encontrada.</p>';
+    container.innerHTML = '<p style="color: #64748b;">Nenhuma mensalidade encontrada com os filtros aplicados.</p>';
     return;
   }
 
-  const grid = criarGridCards();
+  // Separar pagas e pendentes
+  const pendentes = mensalidades.filter(m => m.status !== "paga");
+  const pagas = mensalidades.filter(m => m.status === "paga");
 
-  mensalidades.forEach(mens => {
-    const aluno = DataStore.findById("alunos", mens.aluno_id);
-    const isPaga = mens.status === "paga";
+  // Renderizar pendentes em lista simples
+  if (pendentes.length > 0 && statusFiltro !== "paga") {
+    const secaoPendentes = document.createElement("div");
+    secaoPendentes.innerHTML = `<h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: #dc2626;">Pendentes (${pendentes.length})</h3>`;
+    const gridPendentes = criarGridCards();
+    pendentes.forEach(mens => {
+      gridPendentes.appendChild(criarCardMensalidade(mens));
+    });
+    secaoPendentes.appendChild(gridPendentes);
+    container.appendChild(secaoPendentes);
+  }
 
-    const card = document.createElement("div");
-    card.className = "summary-card";
-    card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: start;">
-        <strong style="font-size: 1.1rem;">${aluno?.nome || "Aluno não encontrado"}</strong>
-        <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: ${isPaga ? "#f0fdf4" : "#fef2f2"}; color: ${isPaga ? "#16a34a" : "#dc2626"};">
-          ${isPaga ? "Paga" : "Pendente"}
-        </span>
-      </div>
-      <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
-        📅 Competência: ${mens.mes}/${mens.ano}<br>
-        💰 Valor: ${formatarReais(mens.valor)}<br>
-        💳 Forma: ${mens.forma_pagamento || "-"}
-      </p>
-      <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;"></div>
-    `;
+  // Renderizar pagas agrupadas por competencia
+  if (pagas.length > 0 && statusFiltro !== "pendente") {
+    const secaoPagas = document.createElement("div");
+    secaoPagas.style.marginTop = pendentes.length > 0 ? "2rem" : "0";
+    secaoPagas.innerHTML = `<h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: #16a34a;">Pagas (${pagas.length})</h3>`;
 
-    const acoes = card.querySelector("div:last-child");
+    // Agrupar por competencia
+    const grupos = {};
+    pagas.forEach(m => {
+      const chave = `${m.ano}-${String(m.mes).padStart(2, "0")}`;
+      if (!grupos[chave]) grupos[chave] = [];
+      grupos[chave].push(m);
+    });
 
-    if (!isPaga) {
-      const btnPagar = document.createElement("button");
-      btnPagar.className = "btn-primary";
-      btnPagar.textContent = "Registrar Pagamento";
-      btnPagar.onclick = () => abrirModalPagamento(mens);
-      acoes.appendChild(btnPagar);
-    }
+    // Ordenar competencias
+    const chavesOrdenadas = Object.keys(grupos).sort((a, b) => b.localeCompare(a));
 
-    const btnEditar = document.createElement("button");
-    btnEditar.className = "btn-secondary";
-    btnEditar.textContent = "Editar";
-    btnEditar.onclick = () => abrirModalMensalidade(mens);
-    acoes.appendChild(btnEditar);
+    chavesOrdenadas.forEach(chave => {
+      const [ano, mes] = chave.split("-");
+      const itens = grupos[chave];
+      const totalGrupo = itens.reduce((acc, m) => acc + (parseFloat(m.valor) || 0), 0);
 
-    grid.appendChild(card);
-  });
+      const pasta = document.createElement("div");
+      pasta.className = "summary-card";
+      pasta.style.marginBottom = "0.75rem";
 
-  container.appendChild(grid);
+      const cabecalho = document.createElement("div");
+      cabecalho.setAttribute("data-testid", `pasta-competencia-${mes}-${ano}`);
+      cabecalho.style.cssText = "display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 0.5rem 0;";
+      cabecalho.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span class="pasta-icone" style="font-weight: bold; color: #3b82f6; font-size: 0.9rem;">+</span>
+          <strong>${mes}/${ano}</strong>
+          <span style="font-size: 0.8rem; color: #64748b;">(${itens.length} mensalidade${itens.length > 1 ? "s" : ""})</span>
+        </div>
+        <span style="font-weight: 600; color: #16a34a;">${formatarReais(totalGrupo)}</span>
+      `;
+
+      const conteudo = document.createElement("div");
+      conteudo.style.display = "none";
+      conteudo.style.marginTop = "0.75rem";
+      conteudo.style.paddingTop = "0.75rem";
+      conteudo.style.borderTop = "1px solid var(--border-color, #e2e8f0)";
+
+      const gridItens = criarGridCards();
+      itens.forEach(m => {
+        gridItens.appendChild(criarCardMensalidade(m));
+      });
+      conteudo.appendChild(gridItens);
+
+      cabecalho.onclick = () => {
+        const icone = cabecalho.querySelector(".pasta-icone");
+        if (conteudo.style.display === "none") {
+          conteudo.style.display = "block";
+          icone.textContent = "-";
+        } else {
+          conteudo.style.display = "none";
+          icone.textContent = "+";
+        }
+      };
+
+      pasta.appendChild(cabecalho);
+      pasta.appendChild(conteudo);
+      secaoPagas.appendChild(pasta);
+    });
+
+    container.appendChild(secaoPagas);
+  }
+}
+
+/** Cria card de mensalidade individual */
+function criarCardMensalidade(mens) {
+  const aluno = DataStore.findById("alunos", mens.aluno_id);
+  const isPaga = mens.status === "paga";
+  
+  // Obter turmas do aluno (multi-turma)
+  let turmasNomes = "";
+  if (aluno) {
+    const turmasIds = getTurmasIds(aluno);
+    const nomes = turmasIds.map(tid => {
+      const t = DataStore.findById("turmas", tid);
+      return t ? t.nome : null;
+    }).filter(Boolean);
+    turmasNomes = nomes.join(", ");
+  }
+
+  const card = document.createElement("div");
+  card.className = "summary-card";
+  card.setAttribute("data-testid", `card-mensalidade-${mens.id}`);
+  card.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: start;">
+      <strong style="font-size: 1.1rem;">${aluno?.nome || "Aluno nao encontrado"}</strong>
+      <span style="font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: ${isPaga ? "#f0fdf4" : "#fef2f2"}; color: ${isPaga ? "#16a34a" : "#dc2626"};">
+        ${isPaga ? "Paga" : "Pendente"}
+      </span>
+    </div>
+    <p style="margin: 0.5rem 0; color: #64748b; font-size: 0.9rem;">
+      Competencia: ${mens.mes}/${mens.ano}<br>
+      Valor: ${formatarReais(mens.valor)}<br>
+      ${turmasNomes ? `Turma: ${turmasNomes}<br>` : ""}
+      Forma: ${mens.forma_pagamento || "-"}
+    </p>
+    <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;"></div>
+  `;
+
+  const acoes = card.querySelector("div:last-child");
+
+  if (!isPaga) {
+    const btnPagar = document.createElement("button");
+    btnPagar.className = "btn-primary";
+    btnPagar.textContent = "Registrar Pagamento";
+    btnPagar.onclick = () => abrirModalPagamento(mens);
+    acoes.appendChild(btnPagar);
+  }
+
+  const btnEditar = document.createElement("button");
+  btnEditar.className = "btn-secondary";
+  btnEditar.textContent = "Editar";
+  btnEditar.onclick = () => abrirModalMensalidade(mens);
+  acoes.appendChild(btnEditar);
+
+  return card;
 }
 
 /** Modal para criar/editar mensalidade */
