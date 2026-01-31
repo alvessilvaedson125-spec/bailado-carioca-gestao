@@ -1,0 +1,111 @@
+Você é um desenvolvedor sênior responsável por auditoria financeira
+em um sistema de gestão escolar.
+
+Sistema: Bailado Carioca  
+Problema: Inconsistência entre Mensalidades pagas e Entradas no Caixa
+
+---
+
+## 🚨 CONTEXTO DO PROBLEMA
+
+O sistema já detecta uma diferença financeira, por exemplo:
+
+- Mensalidades pagas: 64 (R$ 10.297,50)
+- Entradas no Caixa (mensalidades): 63 (R$ 10.160,00)
+- Diferença: R$ 137,50
+
+Porém, o sistema NÃO indica:
+- qual aluno
+- qual mensalidade
+- qual competência
+- nem permite correção direta
+
+---
+
+## 🎯 OBJETIVO
+
+Criar um **Relatório de Inconsistências Financeiras** que identifique
+EXATAMENTE quais mensalidades foram marcadas como pagas
+sem lançamento correspondente no Caixa.
+
+---
+
+## 🧱 IMPLEMENTAÇÃO OBRIGATÓRIA
+
+### 1️⃣ FUNÇÃO DE AUDITORIA
+
+Criar uma função, por exemplo:
+
+auditMensalidadesVsCaixa()
+
+Que:
+- percorre TODAS as mensalidades com status === "paga"
+- para cada mensalidade, procura no Caixa:
+  - categoria === "mensalidade"
+  - aluno_id correspondente
+  - mesma competencia (mes/ano)
+  - mesmo valor
+  - status !== "cancelado"
+
+Se NÃO encontrar correspondência → registrar inconsistência
+
+---
+
+### 2️⃣ ESTRUTURA DO RELATÓRIO
+
+Para cada inconsistência, exibir:
+
+- Nome do aluno
+- Competência (MM/YYYY)
+- Valor da mensalidade
+- Forma de pagamento
+- Data em que foi marcada como paga
+- Motivo: "Mensalidade paga sem lançamento no Caixa"
+
+---
+
+### 3️⃣ INTERFACE (UI)
+
+Adicionar no alerta de diferença financeira:
+
+Botão:
+🔍 "Ver Inconsistências"
+
+Ao clicar:
+- abrir modal ou seção listando TODAS as inconsistências
+- cada item deve ter ações:
+
+[➕ Criar Entrada no Caixa]
+→ cria automaticamente o lançamento correto
+
+[❌ Marcar Mensalidade como Pendente]
+→ reverte erro humano
+
+---
+
+### 4️⃣ SEGURANÇA E REGRAS
+
+- NÃO criar lançamentos duplicados
+- NÃO alterar mensalidades corretas
+- Toda ação deve:
+  - atualizar dashboard
+  - atualizar caixa
+  - atualizar relatórios
+
+---
+
+## 🧪 CRITÉRIOS DE ACEITE
+
+- O sistema aponta exatamente qual mensalidade gerou a diferença
+- O valor total das inconsistências bate com o valor do alerta
+- É possível corrigir sem edição manual
+- Após correção:
+  - diferença = R$ 0,00
+  - alerta desaparece
+- Nenhuma outra funcionalidade é afetada
+
+---
+
+IMPORTANTE:
+Este é um recurso de auditoria e correção de erro humano.
+Não alterar regras financeiras existentes.

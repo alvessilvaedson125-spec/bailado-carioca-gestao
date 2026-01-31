@@ -6414,6 +6414,16 @@ function verificarInconsistencias(mes, ano) {
         DataStore.state.data.turmas.find(t => t.id === item.mensalidade.turma_id) : null;
       const nomeTurma = turma ? `${turma.nome}${turma.nivel ? " - " + turma.nivel : ""}` : "N/A";
       
+      // Formatar forma de pagamento
+      const formasPagamento = {
+        "dinheiro": "Dinheiro",
+        "pix": "PIX",
+        "cartao_credito": "Cartao Credito",
+        "cartao_debito": "Cartao Debito",
+        "transferencia": "Transferencia"
+      };
+      const formaPgto = formasPagamento[item.mensalidade.formaPagamento] || item.mensalidade.formaPagamento || "N/A";
+      
       html += `
         <div class="student-card" style="border-left: 4px solid #dc2626;">
           <div class="card-header">
@@ -6423,10 +6433,13 @@ function verificarInconsistencias(mes, ano) {
             <p><strong>Valor:</strong> ${formatarReais(item.valor)}</p>
             <p><strong>Referencia:</strong> ${item.mensalidade.mesRef}</p>
             <p><strong>Turma:</strong> ${nomeTurma}</p>
+            <p><strong>Forma Pagamento:</strong> ${formaPgto}</p>
             <p><strong>Data Pagamento:</strong> ${item.mensalidade.dataPagamento || 'N/A'}</p>
+            <p style="color: #dc2626; font-size: 0.85rem; margin-top: 0.5rem;"><strong>Motivo:</strong> Mensalidade paga sem lancamento no Caixa</p>
           </div>
-          <div class="card-actions">
-            <button class="btn-sm btn-primary" onclick="criarEntradaFaltante('${item.mensalidade.id}')">Criar Entrada no Caixa</button>
+          <div class="card-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn-sm btn-primary" onclick="criarEntradaFaltante('${item.mensalidade.id}')" data-testid="button-criar-entrada-${item.mensalidade.id}">Criar Entrada no Caixa</button>
+            <button class="btn-sm btn-secondary" onclick="marcarMensalidadePendente('${item.mensalidade.id}')" data-testid="button-marcar-pendente-${item.mensalidade.id}">Marcar como Pendente</button>
           </div>
         </div>
       `;
@@ -6767,6 +6780,44 @@ function criarEntradaFaltante(mensalidadeId) {
 
   DataStore.save();
   alert("Entrada criada no Caixa com sucesso!");
+  
+  // Recarregar verificacao
+  const mes = parseInt(document.getElementById("relatorio-mes").value);
+  const ano = parseInt(document.getElementById("relatorio-ano").value);
+  verificarInconsistencias(mes, ano);
+}
+
+/** Marca mensalidade como pendente (reverte erro humano) */
+function marcarMensalidadePendente(mensalidadeId) {
+  const mensalidade = DataStore.state.data.mensalidades.find(m => m.id === mensalidadeId);
+  if (!mensalidade) {
+    alert("Mensalidade nao encontrada");
+    return;
+  }
+
+  const aluno = DataStore.state.data.alunos.find(a => a.id === mensalidade.aluno_id);
+  const nomeAluno = aluno ? aluno.nome : "Aluno";
+  
+  if (!confirm(`Reverter mensalidade de ${nomeAluno} (${mensalidade.mesRef}) para PENDENTE?\n\nIsso ira:\n- Remover o status de paga\n- Limpar a data de pagamento\n- Limpar a forma de pagamento`)) {
+    return;
+  }
+  
+  // Registrar no historico do aluno
+  if (aluno && !aluno.historico) aluno.historico = [];
+  if (aluno) {
+    aluno.historico.push({
+      data: new Date().toISOString(),
+      evento: `Mensalidade ${mensalidade.mesRef} revertida para pendente (correcao de erro)`
+    });
+  }
+  
+  // Reverter para pendente
+  mensalidade.status = "pendente";
+  mensalidade.dataPagamento = null;
+  mensalidade.formaPagamento = null;
+  
+  DataStore.save();
+  alert("Mensalidade marcada como pendente!");
   
   // Recarregar verificacao
   const mes = parseInt(document.getElementById("relatorio-mes").value);
