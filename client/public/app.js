@@ -665,15 +665,17 @@ function executarDiagnostico() {
   let detalhesTurmas = [];
   let alunosComTurmasInvalidas = [];
   
-  // Verificar cada turma ativa e contar alunos
+  // Verificar cada turma ativa e contar alunos PAGANTES (consistente com cards)
   let totalMatriculasCalculado = 0;
   turmasAtivas.forEach(turma => {
-    const alunosDaTurma = getAlunosDaTurma(turma.id);
-    totalMatriculasCalculado += alunosDaTurma.length;
+    const alunosPagantes = getAlunosPagantesDaTurma(turma.id);
+    const alunosBolsistas = getAlunosDaTurma(turma.id).filter(a => isBolsista(a));
+    totalMatriculasCalculado += alunosPagantes.length;
     detalhesTurmas.push({
       nome: turma.nome,
       nivel: turma.nivel || "N/A",
-      qtd: alunosDaTurma.length
+      qtdPagantes: alunosPagantes.length,
+      qtdBolsistas: alunosBolsistas.length
     });
   });
 
@@ -692,9 +694,10 @@ function executarDiagnostico() {
     }
   });
 
-  // Contar matriculas do jeito antigo (pelo aluno) para comparar
+  // Contar matriculas do jeito antigo (pelo aluno) - apenas pagantes para comparar
   let matriculasPorAluno = 0;
-  alunosAtivos.forEach(aluno => {
+  const alunosPagantesAtivos = alunosAtivos.filter(a => !isBolsista(a));
+  alunosPagantesAtivos.forEach(aluno => {
     const turmasDoAluno = getTurmasIds(aluno);
     matriculasPorAluno += turmasDoAluno.length;
   });
@@ -706,16 +709,17 @@ function executarDiagnostico() {
       
       <div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--color-bg-primary); border-radius: 6px;">
         <strong>Resumo:</strong><br>
-        - Alunos ativos: ${alunosAtivos.length}<br>
+        - Alunos pagantes ativos: ${alunosPagantesAtivos.length}<br>
+        - Bolsistas ativos: ${alunosAtivos.length - alunosPagantesAtivos.length}<br>
         - Turmas ativas: ${turmasAtivas.length}<br>
-        - Matriculas (soma das turmas): ${totalMatriculasCalculado}<br>
-        - Matriculas (contagem por aluno): ${matriculasPorAluno}
+        - Matriculas pagantes (soma das turmas): ${totalMatriculasCalculado}<br>
+        - Matriculas pagantes (contagem por aluno): ${matriculasPorAluno}
       </div>
       
       <div style="margin-bottom: 1rem;">
         <strong>Detalhes por Turma:</strong>
         <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-          ${detalhesTurmas.map(t => `<li>${t.nome} (${t.nivel}): ${t.qtd} aluno(s)</li>`).join("")}
+          ${detalhesTurmas.map(t => `<li>${t.nome} (${t.nivel}): ${t.qtdPagantes} pagante(s)${t.qtdBolsistas > 0 ? ` + ${t.qtdBolsistas} bolsista(s)` : ''}</li>`).join("")}
         </ul>
         <strong>Total: ${totalMatriculasCalculado}</strong>
       </div>
@@ -1062,11 +1066,11 @@ const pagesRenderers = {
     const alunosPagantes = DataStore.state.data.alunos.filter(a => a.status === "ativo" && !isBolsista(a)).length;
     const bolsistasAtivos = DataStore.state.data.alunos.filter(a => a.status === "ativo" && isBolsista(a)).length;
     
-    // Contar matriculas totais: soma de alunos ativos em cada turma
+    // Contar matriculas totais: soma de alunos PAGANTES em cada turma (exclui bolsistas)
     // Ex: Turma1(24) + Turma2(17) + Turma3(14) + Turma4(7) + Turma5(4) = 66 matriculas
     let totalMatriculas = 0;
     DataStore.state.data.turmas.filter(t => t.ativa !== false).forEach(turma => {
-      const alunosDaTurma = getAlunosDaTurma(turma.id);
+      const alunosDaTurma = getAlunosPagantesDaTurma(turma.id);
       totalMatriculas += alunosDaTurma.length;
     });
     
