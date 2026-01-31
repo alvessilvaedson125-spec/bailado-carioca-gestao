@@ -3698,15 +3698,16 @@ function renderMensalidades() {
   btnDisparo.onclick = () => abrirModalDisparoMultiplo();
   header.appendChild(btnDisparo);
 
-  const btnLimparPendentes = document.createElement("button");
-  btnLimparPendentes.id = "btn-limpar-pendentes";
-  btnLimparPendentes.className = "btn-secondary";
-  btnLimparPendentes.style.cssText = "background: #fef2f2; color: #dc2626; border-color: #fecaca;";
-  btnLimparPendentes.textContent = "Limpar Pendentes";
-  btnLimparPendentes.setAttribute("data-testid", "button-limpar-pendentes");
-  btnLimparPendentes.onclick = () => executarLimpezaPendentes();
-  btnLimparPendentes.style.display = "none";
-  header.appendChild(btnLimparPendentes);
+  // Botao Limpar Mensalidades (apenas ADMIN)
+  if (Auth.getPerfilAtual() === "admin") {
+    const btnLimpar = document.createElement("button");
+    btnLimpar.className = "btn-secondary";
+    btnLimpar.style.cssText = "background: #fef2f2; color: #dc2626; border-color: #fecaca;";
+    btnLimpar.textContent = "Limpar Mensalidades";
+    btnLimpar.setAttribute("data-testid", "button-limpar-mensalidades");
+    btnLimpar.onclick = () => abrirModalLimparMensalidades();
+    header.appendChild(btnLimpar);
+  }
 
   UI.content.appendChild(header);
 
@@ -3843,6 +3844,293 @@ function executarLimpezaPendentes() {
   
   // Atualizar lista
   aplicarFiltrosMensalidades();
+}
+
+/** Modal para limpar mensalidades (ADMIN) */
+function abrirModalLimparMensalidades() {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+  modal.style.maxWidth = "480px";
+
+  const hoje = new Date();
+  const mesAtual = String(hoje.getMonth() + 1).padStart(2, "0");
+  const anoAtual = String(hoje.getFullYear());
+
+  modal.innerHTML = `
+    <h2 class="modal-title" style="color: #dc2626;">Limpar Mensalidades</h2>
+    
+    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+      <p style="color: #dc2626; font-weight: 500; margin-bottom: 0.5rem;">ATENCAO: Acao irreversivel!</p>
+      <p style="color: #7f1d1d; font-size: 0.9rem;">Essa acao remove mensalidades definitivamente do sistema. Nao afeta alunos, turmas ou lancamentos do caixa.</p>
+    </div>
+
+    <div class="modal-grid">
+      <div class="field">
+        <label>Competencia (MM/AAAA)</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <select id="limpar-mes" style="flex: 1; padding: 0.5rem;">
+            ${["01","02","03","04","05","06","07","08","09","10","11","12"].map(m => 
+              `<option value="${m}" ${m === mesAtual ? "selected" : ""}>${m}</option>`
+            ).join("")}
+          </select>
+          <input id="limpar-ano" type="number" value="${anoAtual}" style="flex: 1; padding: 0.5rem;">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Status a remover</label>
+        <select id="limpar-status" style="width: 100%; padding: 0.5rem;">
+          <option value="pendente">Apenas Pendentes</option>
+          <option value="paga">Apenas Pagas</option>
+          <option value="todas">Todas (Pendentes + Pagas)</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="preview-limpeza" style="margin: 1rem 0; padding: 0.75rem; background: var(--color-card); border-radius: 6px; border: 1px solid var(--color-border);"></div>
+
+    <div style="margin: 1rem 0;">
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <input type="checkbox" id="confirma-limpeza">
+        <span style="color: #dc2626; font-weight: 500;">Confirmo que desejo excluir permanentemente estas mensalidades</span>
+      </label>
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-btn-secondary">Cancelar</button>
+      <button class="modal-btn-primary" id="btn-executar-limpeza" style="background: #dc2626;" disabled>Excluir Mensalidades</button>
+    </div>
+  `;
+
+  const selectMes = modal.querySelector("#limpar-mes");
+  const inputAno = modal.querySelector("#limpar-ano");
+  const selectStatus = modal.querySelector("#limpar-status");
+  const previewDiv = modal.querySelector("#preview-limpeza");
+  const checkConfirma = modal.querySelector("#confirma-limpeza");
+  const btnExecutar = modal.querySelector("#btn-executar-limpeza");
+
+  // Funcao para atualizar preview
+  const atualizarPreview = () => {
+    const mes = selectMes.value;
+    const ano = inputAno.value;
+    const status = selectStatus.value;
+
+    const mensalidades = DataStore.state.data.mensalidades.filter(m => {
+      const mMes = String(m.mes).padStart(2, "0");
+      const mAno = String(m.ano);
+      if (mMes !== mes || mAno !== ano) return false;
+      if (status === "todas") return m.status === "pendente" || m.status === "paga";
+      return m.status === status;
+    });
+
+    const total = mensalidades.reduce((acc, m) => acc + (parseFloat(m.valor) || 0), 0);
+    const pendentes = mensalidades.filter(m => m.status === "pendente").length;
+    const pagas = mensalidades.filter(m => m.status === "paga").length;
+
+    previewDiv.innerHTML = `
+      <p style="font-weight: 500; margin-bottom: 0.5rem;">Mensalidades a serem removidas:</p>
+      <p style="font-size: 0.9rem; color: var(--color-text-secondary);">
+        Total: <strong>${mensalidades.length}</strong> mensalidade(s)<br>
+        Pendentes: ${pendentes} | Pagas: ${pagas}<br>
+        Valor total: <strong>${formatarReais(total)}</strong>
+      </p>
+    `;
+  };
+
+  selectMes.onchange = atualizarPreview;
+  inputAno.onchange = atualizarPreview;
+  selectStatus.onchange = atualizarPreview;
+  atualizarPreview();
+
+  // Checkbox habilita botao
+  checkConfirma.onchange = () => {
+    btnExecutar.disabled = !checkConfirma.checked;
+  };
+
+  modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
+
+  btnExecutar.onclick = () => {
+    if (!checkConfirma.checked) return;
+
+    const mes = selectMes.value;
+    const ano = inputAno.value;
+    const status = selectStatus.value;
+
+    // Filtrar mensalidades a remover
+    const idsRemover = [];
+    DataStore.state.data.mensalidades.forEach(m => {
+      const mMes = String(m.mes).padStart(2, "0");
+      const mAno = String(m.ano);
+      if (mMes !== mes || mAno !== ano) return;
+      if (status === "todas" && (m.status === "pendente" || m.status === "paga")) {
+        idsRemover.push(m.id);
+      } else if (m.status === status) {
+        idsRemover.push(m.id);
+      }
+    });
+
+    if (idsRemover.length === 0) {
+      alert("Nenhuma mensalidade encontrada para os criterios selecionados.");
+      return;
+    }
+
+    // Remover mensalidades
+    DataStore.state.data.mensalidades = DataStore.state.data.mensalidades.filter(m => !idsRemover.includes(m.id));
+    DataStore.save();
+
+    alert(`${idsRemover.length} mensalidade(s) removida(s) com sucesso.`);
+    overlay.remove();
+    UI.navigate("mensalidades");
+  };
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+/** Modal para limpar recibos (ADMIN) */
+function abrirModalLimparRecibos() {
+  const overlay = criarOverlay();
+  const modal = document.createElement("div");
+  modal.className = "modal-card";
+  modal.style.maxWidth = "480px";
+
+  const hoje = new Date();
+  const mesAtual = String(hoje.getMonth() + 1).padStart(2, "0");
+  const anoAtual = String(hoje.getFullYear());
+
+  modal.innerHTML = `
+    <h2 class="modal-title" style="color: #dc2626;">Limpar Recibos</h2>
+    
+    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+      <p style="color: #dc2626; font-weight: 500; margin-bottom: 0.5rem;">ATENCAO: Acao irreversivel!</p>
+      <p style="color: #7f1d1d; font-size: 0.9rem;">Recibos sao comprovantes. Use apenas para reinicio de periodo. Nao altera o Caixa nem recria mensalidades.</p>
+    </div>
+
+    <div class="modal-grid">
+      <div class="field">
+        <label>Competencia (MM/AAAA)</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <select id="limpar-recibo-mes" style="flex: 1; padding: 0.5rem;">
+            ${["01","02","03","04","05","06","07","08","09","10","11","12"].map(m => 
+              `<option value="${m}" ${m === mesAtual ? "selected" : ""}>${m}</option>`
+            ).join("")}
+          </select>
+          <input id="limpar-recibo-ano" type="number" value="${anoAtual}" style="flex: 1; padding: 0.5rem;">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Tipo de recibo</label>
+        <select id="limpar-recibo-tipo" style="width: 100%; padding: 0.5rem;">
+          <option value="mensalidade">Apenas Mensalidades</option>
+          <option value="aula_avulsa">Apenas Aulas Avulsas</option>
+          <option value="todos">Todos os tipos</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="preview-limpeza-recibo" style="margin: 1rem 0; padding: 0.75rem; background: var(--color-card); border-radius: 6px; border: 1px solid var(--color-border);"></div>
+
+    <div style="margin: 1rem 0;">
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <input type="checkbox" id="confirma-limpeza-recibo">
+        <span style="color: #dc2626; font-weight: 500;">Confirmo que desejo excluir permanentemente estes recibos</span>
+      </label>
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-btn-secondary">Cancelar</button>
+      <button class="modal-btn-primary" id="btn-executar-limpeza-recibo" style="background: #dc2626;" disabled>Excluir Recibos</button>
+    </div>
+  `;
+
+  const selectMes = modal.querySelector("#limpar-recibo-mes");
+  const inputAno = modal.querySelector("#limpar-recibo-ano");
+  const selectTipo = modal.querySelector("#limpar-recibo-tipo");
+  const previewDiv = modal.querySelector("#preview-limpeza-recibo");
+  const checkConfirma = modal.querySelector("#confirma-limpeza-recibo");
+  const btnExecutar = modal.querySelector("#btn-executar-limpeza-recibo");
+
+  // Funcao para atualizar preview
+  const atualizarPreview = () => {
+    const mes = selectMes.value;
+    const ano = inputAno.value;
+    const tipo = selectTipo.value;
+
+    const recibos = DataStore.state.data.recibos.filter(r => {
+      // Extrair mes/ano da data do recibo
+      if (!r.data) return false;
+      const dataRecibo = new Date(r.data);
+      const rMes = String(dataRecibo.getMonth() + 1).padStart(2, "0");
+      const rAno = String(dataRecibo.getFullYear());
+      if (rMes !== mes || rAno !== ano) return false;
+      if (tipo === "todos") return true;
+      return r.tipo === tipo;
+    });
+
+    const total = recibos.reduce((acc, r) => acc + (parseFloat(r.valor) || 0), 0);
+    const mensalidades = recibos.filter(r => r.tipo === "mensalidade").length;
+    const avulsas = recibos.filter(r => r.tipo === "aula_avulsa").length;
+
+    previewDiv.innerHTML = `
+      <p style="font-weight: 500; margin-bottom: 0.5rem;">Recibos a serem removidos:</p>
+      <p style="font-size: 0.9rem; color: var(--color-text-secondary);">
+        Total: <strong>${recibos.length}</strong> recibo(s)<br>
+        Mensalidades: ${mensalidades} | Aulas Avulsas: ${avulsas}<br>
+        Valor total: <strong>${formatarReais(total)}</strong>
+      </p>
+    `;
+  };
+
+  selectMes.onchange = atualizarPreview;
+  inputAno.onchange = atualizarPreview;
+  selectTipo.onchange = atualizarPreview;
+  atualizarPreview();
+
+  // Checkbox habilita botao
+  checkConfirma.onchange = () => {
+    btnExecutar.disabled = !checkConfirma.checked;
+  };
+
+  modal.querySelector(".modal-btn-secondary").onclick = () => overlay.remove();
+
+  btnExecutar.onclick = () => {
+    if (!checkConfirma.checked) return;
+
+    const mes = selectMes.value;
+    const ano = inputAno.value;
+    const tipo = selectTipo.value;
+
+    // Filtrar recibos a remover
+    const idsRemover = [];
+    DataStore.state.data.recibos.forEach(r => {
+      if (!r.data) return;
+      const dataRecibo = new Date(r.data);
+      const rMes = String(dataRecibo.getMonth() + 1).padStart(2, "0");
+      const rAno = String(dataRecibo.getFullYear());
+      if (rMes !== mes || rAno !== ano) return;
+      if (tipo === "todos" || r.tipo === tipo) {
+        idsRemover.push(r.id);
+      }
+    });
+
+    if (idsRemover.length === 0) {
+      alert("Nenhum recibo encontrado para os criterios selecionados.");
+      return;
+    }
+
+    // Remover recibos
+    DataStore.state.data.recibos = DataStore.state.data.recibos.filter(r => !idsRemover.includes(r.id));
+    DataStore.save();
+
+    alert(`${idsRemover.length} recibo(s) removido(s) com sucesso.`);
+    overlay.remove();
+    UI.navigate("recibos");
+  };
+
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
 }
 
 /** Renderiza cards de mensalidades */
@@ -4694,6 +4982,17 @@ function renderRecibos() {
   `;
   selectFiltro.onchange = () => renderCardsRecibos(selectFiltro.value);
   header.appendChild(selectFiltro);
+
+  // Botao Limpar Recibos (apenas ADMIN)
+  if (Auth.getPerfilAtual() === "admin") {
+    const btnLimpar = document.createElement("button");
+    btnLimpar.className = "btn-secondary";
+    btnLimpar.style.cssText = "background: #fef2f2; color: #dc2626; border-color: #fecaca;";
+    btnLimpar.textContent = "Limpar Recibos";
+    btnLimpar.setAttribute("data-testid", "button-limpar-recibos");
+    btnLimpar.onclick = () => abrirModalLimparRecibos();
+    header.appendChild(btnLimpar);
+  }
 
   UI.content.appendChild(header);
 
