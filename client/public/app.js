@@ -6255,14 +6255,14 @@ function verificarInconsistencias(mes, ano) {
       <div class="summary-card">
         <span class="card-title">Diferenca</span>
         <span class="card-value" style="color: ${diferenca === 0 ? '#16a34a' : '#dc2626'};">${formatarReais(diferenca)}</span>
-        <span style="font-size: 0.85rem; color: var(--color-text-muted);">${diferenca === 0 ? 'OK' : 'Verificar'}</span>
+        <span style="font-size: 0.85rem; color: var(--color-text-muted);">${diferenca === 0 ? 'OK' : '<a href="#detalhes-inconsistencias" style="color: #3b82f6; text-decoration: underline; cursor: pointer;">Ver detalhes abaixo</a>'}</span>
       </div>
     </div>
   `;
 
   if (semEntrada.length > 0) {
     html += `
-      <div style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+      <div id="detalhes-inconsistencias" style="background: var(--color-card); border: 1px solid var(--color-border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
         <h3 style="color: #dc2626; margin-bottom: 1rem;">Mensalidades pagas SEM entrada no Caixa (${semEntrada.length})</h3>
         <p style="color: var(--color-text-muted); margin-bottom: 1rem; font-size: 0.9rem;">
           Estas mensalidades foram marcadas como pagas, mas nao geraram lancamento no Caixa.
@@ -6300,8 +6300,9 @@ function verificarInconsistencias(mes, ano) {
   
   // Mostrar mensalidades orfas (aluno nao esta mais na turma)
   if (mensalidadesOrfas.length > 0) {
+    const idOrfas = semEntrada.length === 0 ? 'id="detalhes-inconsistencias"' : '';
     html += `
-      <div style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+      <div ${idOrfas} style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
         <h3 style="color: #f59e0b; margin-bottom: 1rem;">Mensalidades de alunos que mudaram de turma (${mensalidadesOrfas.length})</h3>
         <p style="color: var(--color-text-muted); margin-bottom: 1rem; font-size: 0.9rem;">
           Estes alunos tem mensalidade paga para uma turma da qual nao fazem mais parte.
@@ -6375,8 +6376,9 @@ function verificarInconsistencias(mes, ano) {
     });
 
     if (duplicatas.length > 0 || entradasExtras.length > 0) {
+      const idProblemas = (semEntrada.length === 0 && mensalidadesOrfas.length === 0) ? 'id="detalhes-inconsistencias"' : '';
       html += `
-        <div style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem;">
+        <div ${idProblemas} style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem;">
           <h3 style="color: #f59e0b; margin-bottom: 1rem;">Possiveis problemas encontrados</h3>
       `;
 
