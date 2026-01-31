@@ -1206,13 +1206,21 @@ tbody tr:hover {
   
   .aluno-header {
     padding: 0.875rem 1rem;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     gap: 0.5rem;
+  }
+  
+  .aluno-nome {
+    flex: 1 1 100%;
+    min-width: 0;
+    width: 100%;
   }
   
   .aluno-badges {
     justify-content: flex-start;
     width: 100%;
+    flex-wrap: wrap;
   }
   
   .aluno-body {
