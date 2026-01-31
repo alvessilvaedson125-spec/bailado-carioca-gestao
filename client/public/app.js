@@ -6177,9 +6177,38 @@ function verificarInconsistencias(mes, ano) {
 
   // Identificar mensalidades sem entrada correspondente no caixa
   const semEntrada = [];
+  // Identificar mensalidades "orfas" (aluno nao esta mais na turma)
+  const mensalidadesOrfas = [];
+  
   mensalidadesPagas.forEach(m => {
     const aluno = DataStore.state.data.alunos.find(a => a.id === m.aluno_id);
     const nomeAluno = aluno ? aluno.nome : "Aluno nao encontrado";
+    
+    // Verificar se aluno ainda esta na turma da mensalidade
+    if (aluno && m.turma_id) {
+      const turma = DataStore.state.data.turmas.find(t => t.id === m.turma_id);
+      const nomeTurma = turma ? turma.nome : "Turma excluida";
+      const nivelTurma = turma ? turma.nivel : "";
+      
+      // Verificar se aluno pertence a essa turma
+      const turmasDoAluno = getTurmasIds(aluno);
+      const alunoNaTurma = turmasDoAluno.includes(m.turma_id);
+      
+      if (!alunoNaTurma && aluno.status === "ativo") {
+        mensalidadesOrfas.push({
+          mensalidade: m,
+          aluno: aluno,
+          nomeAluno: nomeAluno,
+          turmaOriginal: nomeTurma + (nivelTurma ? " - " + nivelTurma : ""),
+          turmaAtual: turmasDoAluno.length > 0 ? 
+            turmasDoAluno.map(tid => {
+              const t = DataStore.state.data.turmas.find(x => x.id === tid);
+              return t ? t.nome : "N/A";
+            }).join(", ") : "Nenhuma",
+          valor: m.valor
+        });
+      }
+    }
     
     // Procurar entrada correspondente no caixa
     const entradaCorrespondente = entradasCaixa.find(c => 
@@ -6231,6 +6260,11 @@ function verificarInconsistencias(mes, ano) {
     `;
     
     semEntrada.forEach(item => {
+      // Buscar informacao da turma
+      const turma = item.mensalidade.turma_id ? 
+        DataStore.state.data.turmas.find(t => t.id === item.mensalidade.turma_id) : null;
+      const nomeTurma = turma ? `${turma.nome}${turma.nivel ? " - " + turma.nivel : ""}` : "N/A";
+      
       html += `
         <div class="student-card" style="border-left: 4px solid #dc2626;">
           <div class="card-header">
@@ -6239,6 +6273,7 @@ function verificarInconsistencias(mes, ano) {
           <div class="card-body">
             <p><strong>Valor:</strong> ${formatarReais(item.valor)}</p>
             <p><strong>Referencia:</strong> ${item.mensalidade.mesRef}</p>
+            <p><strong>Turma:</strong> ${nomeTurma}</p>
             <p><strong>Data Pagamento:</strong> ${item.mensalidade.dataPagamento || 'N/A'}</p>
           </div>
           <div class="card-actions">
@@ -6249,7 +6284,43 @@ function verificarInconsistencias(mes, ano) {
     });
     
     html += `</div></div>`;
-  } else if (diferenca === 0) {
+  }
+  
+  // Mostrar mensalidades orfas (aluno nao esta mais na turma)
+  if (mensalidadesOrfas.length > 0) {
+    html += `
+      <div style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <h3 style="color: #f59e0b; margin-bottom: 1rem;">Mensalidades de alunos que mudaram de turma (${mensalidadesOrfas.length})</h3>
+        <p style="color: var(--color-text-muted); margin-bottom: 1rem; font-size: 0.9rem;">
+          Estes alunos tem mensalidade paga para uma turma da qual nao fazem mais parte.
+          Isso pode causar discrepancias nos filtros por turma.
+        </p>
+        <div class="cards-grid">
+    `;
+    
+    mensalidadesOrfas.forEach(item => {
+      html += `
+        <div class="student-card" style="border-left: 4px solid #f59e0b;">
+          <div class="card-header">
+            <strong>${item.nomeAluno}</strong>
+          </div>
+          <div class="card-body">
+            <p><strong>Valor:</strong> ${formatarReais(item.valor)}</p>
+            <p><strong>Referencia:</strong> ${item.mensalidade.mesRef}</p>
+            <p><strong>Turma da mensalidade:</strong> ${item.turmaOriginal}</p>
+            <p><strong>Turma atual do aluno:</strong> ${item.turmaAtual}</p>
+          </div>
+          <div class="card-actions">
+            <button class="btn-sm btn-primary" onclick="UI.navigate('alunos'); setTimeout(() => buscarAluno('${item.aluno.id}'), 100)">Ver Aluno</button>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += `</div></div>`;
+  }
+  
+  if (diferenca === 0 && semEntrada.length === 0 && mensalidadesOrfas.length === 0) {
     html += `
       <div style="background: var(--color-card); border: 1px solid #16a34a; border-radius: 8px; padding: 1.5rem; text-align: center;">
         <h3 style="color: #16a34a;">Tudo certo!</h3>
