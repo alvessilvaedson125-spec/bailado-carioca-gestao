@@ -952,14 +952,12 @@ const pagesRenderers = {
     const alunosPagantes = DataStore.state.data.alunos.filter(a => a.status === "ativo" && !isBolsista(a)).length;
     const bolsistasAtivos = DataStore.state.data.alunos.filter(a => a.status === "ativo" && isBolsista(a)).length;
     
-    // Contar matriculas totais apenas em turmas ATIVAS
+    // Contar matriculas totais (alunos ativos x turmas em que estao matriculados)
+    // Ex: 60 alunos ativos = 65 matriculas (alguns alunos em multiplas turmas)
     let totalMatriculas = 0;
-    const turmasAtivas = DataStore.state.data.turmas.filter(t => t.ativa !== false).map(t => t.id);
     DataStore.state.data.alunos.filter(a => a.status === "ativo").forEach(aluno => {
       const turmasDoAluno = getTurmasIds(aluno);
-      // Contar apenas turmas ativas
-      const turmasAtivasDoAluno = turmasDoAluno.filter(tid => turmasAtivas.includes(tid));
-      totalMatriculas += turmasAtivasDoAluno.length > 0 ? turmasAtivasDoAluno.length : 0;
+      totalMatriculas += Math.max(turmasDoAluno.length, 1);
     });
     
     const cards = [
@@ -6266,7 +6264,7 @@ function verificarInconsistencias(mes, ano) {
       <div class="summary-card">
         <span class="card-title">Diferenca</span>
         <span class="card-value" style="color: ${diferenca === 0 ? '#16a34a' : '#dc2626'};">${formatarReais(diferenca)}</span>
-        <span style="font-size: 0.85rem; color: var(--color-text-muted);">${diferenca === 0 ? 'OK' : '<button id="btn-ver-detalhes" class="btn-link" style="background: none; border: none; color: #3b82f6; text-decoration: underline; cursor: pointer; padding: 0; font-size: inherit;">Ver detalhes abaixo</button>'}</span>
+        <span style="font-size: 0.85rem; color: var(--color-text-muted);">${diferenca === 0 ? 'OK' : 'Ver abaixo'}</span>
       </div>
     </div>
   `;
@@ -6577,18 +6575,6 @@ function verificarInconsistencias(mes, ano) {
   }
 
   container.innerHTML = html;
-  
-  // Adicionar evento de clique no botao de detalhes
-  const btnDetalhes = document.getElementById("btn-ver-detalhes");
-  if (btnDetalhes) {
-    btnDetalhes.addEventListener("click", function(e) {
-      e.preventDefault();
-      const detalhes = document.getElementById("detalhes-inconsistencias");
-      if (detalhes) {
-        detalhes.scrollIntoView({ behavior: "smooth" });
-      }
-    });
-  }
 }
 
 /** Cancela uma entrada do caixa */
