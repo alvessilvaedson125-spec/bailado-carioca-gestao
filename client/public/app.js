@@ -952,12 +952,12 @@ const pagesRenderers = {
     const alunosPagantes = DataStore.state.data.alunos.filter(a => a.status === "ativo" && !isBolsista(a)).length;
     const bolsistasAtivos = DataStore.state.data.alunos.filter(a => a.status === "ativo" && isBolsista(a)).length;
     
-    // Contar matriculas totais (alunos ativos x turmas em que estao matriculados)
-    // Ex: 60 alunos ativos = 65 matriculas (alguns alunos em multiplas turmas)
+    // Contar matriculas totais: soma de alunos ativos em cada turma
+    // Ex: Turma1(24) + Turma2(17) + Turma3(14) + Turma4(7) + Turma5(4) = 66 matriculas
     let totalMatriculas = 0;
-    DataStore.state.data.alunos.filter(a => a.status === "ativo").forEach(aluno => {
-      const turmasDoAluno = getTurmasIds(aluno);
-      totalMatriculas += turmasDoAluno.length;
+    DataStore.state.data.turmas.filter(t => t.ativa !== false).forEach(turma => {
+      const alunosDaTurma = getAlunosDaTurma(turma.id);
+      totalMatriculas += alunosDaTurma.length;
     });
     
     const cards = [
