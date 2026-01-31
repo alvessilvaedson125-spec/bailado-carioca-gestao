@@ -6326,8 +6326,13 @@ function verificarInconsistencias(mes, ano) {
 
   // Identificar mensalidades sem entrada correspondente no caixa
   const semEntrada = [];
+  // Identificar mensalidades com valor divergente
+  const valorDivergente = [];
   // Identificar mensalidades "orfas" (aluno nao esta mais na turma)
   const mensalidadesOrfas = [];
+  
+  // Criar copia das entradas para marcar as que ja foram usadas
+  const entradasDisponiveis = [...entradasCaixa];
   
   mensalidadesPagas.forEach(m => {
     const aluno = DataStore.state.data.alunos.find(a => a.id === m.aluno_id);
@@ -6359,18 +6364,47 @@ function verificarInconsistencias(mes, ano) {
       }
     }
     
-    // Procurar entrada correspondente no caixa
-    const entradaCorrespondente = entradasCaixa.find(c => 
-      c.aluno_id === m.aluno_id || 
-      (c.descricao && c.descricao.includes(nomeAluno) && c.descricao.includes(mesAnoStr))
+    // Procurar entrada correspondente no caixa (por aluno_id E valor EXATO)
+    let entradaIdx = entradasDisponiveis.findIndex(c => 
+      c.aluno_id === m.aluno_id && Math.abs(c.valor - m.valor) < 0.01
     );
     
-    if (!entradaCorrespondente) {
-      semEntrada.push({
-        mensalidade: m,
-        nomeAluno: nomeAluno,
-        valor: m.valor
-      });
+    // Se nao achou por aluno_id + valor, tenta por descricao + valor
+    if (entradaIdx === -1) {
+      entradaIdx = entradasDisponiveis.findIndex(c => 
+        c.descricao && 
+        c.descricao.toLowerCase().includes(nomeAluno.toLowerCase()) && 
+        Math.abs(c.valor - m.valor) < 0.01
+      );
+    }
+    
+    if (entradaIdx !== -1) {
+      // Remover entrada para nao usar novamente
+      entradasDisponiveis.splice(entradaIdx, 1);
+    } else {
+      // Verificar se existe entrada do mesmo aluno mas com valor diferente
+      const entradaMesmoAluno = entradasDisponiveis.find(c => c.aluno_id === m.aluno_id);
+      
+      if (entradaMesmoAluno && Math.abs(entradaMesmoAluno.valor - m.valor) >= 0.01) {
+        valorDivergente.push({
+          mensalidade: m,
+          entrada: entradaMesmoAluno,
+          nomeAluno: nomeAluno,
+          valorMensalidade: m.valor,
+          valorEntrada: entradaMesmoAluno.valor,
+          diferenca: m.valor - entradaMesmoAluno.valor
+        });
+        // Remover para nao duplicar
+        const idx = entradasDisponiveis.indexOf(entradaMesmoAluno);
+        if (idx !== -1) entradasDisponiveis.splice(idx, 1);
+      } else {
+        // Nao encontrou entrada correspondente
+        semEntrada.push({
+          mensalidade: m,
+          nomeAluno: nomeAluno,
+          valor: m.valor
+        });
+      }
     }
   });
 
@@ -6448,6 +6482,47 @@ function verificarInconsistencias(mes, ano) {
     html += `</div></div>`;
   }
   
+  // Mostrar mensalidades com valor divergente
+  if (valorDivergente.length > 0) {
+    const idDivergente = semEntrada.length === 0 ? 'id="detalhes-inconsistencias"' : '';
+    html += `
+      <div ${idDivergente} style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <h3 style="color: #f59e0b; margin-bottom: 1rem;">Mensalidades com VALOR DIVERGENTE no Caixa (${valorDivergente.length})</h3>
+        <p style="color: var(--color-text-muted); margin-bottom: 1rem; font-size: 0.9rem;">
+          Estas mensalidades tem entrada no caixa, mas com valor diferente do registrado na mensalidade.
+        </p>
+        <div class="cards-grid">
+    `;
+    
+    valorDivergente.forEach(item => {
+      const turma = item.mensalidade.turma_id ? 
+        DataStore.state.data.turmas.find(t => t.id === item.mensalidade.turma_id) : null;
+      const nomeTurma = turma ? `${turma.nome}${turma.nivel ? " - " + turma.nivel : ""}` : "N/A";
+      
+      html += `
+        <div class="student-card" style="border-left: 4px solid #f59e0b;">
+          <div class="card-header">
+            <strong>${item.nomeAluno}</strong>
+          </div>
+          <div class="card-body">
+            <p><strong>Referencia:</strong> ${item.mensalidade.mesRef}</p>
+            <p><strong>Turma:</strong> ${nomeTurma}</p>
+            <p><strong>Valor Mensalidade:</strong> ${formatarReais(item.valorMensalidade)}</p>
+            <p><strong>Valor no Caixa:</strong> ${formatarReais(item.valorEntrada)}</p>
+            <p style="color: ${item.diferenca > 0 ? '#dc2626' : '#16a34a'}; font-weight: bold;">
+              <strong>Diferenca:</strong> ${formatarReais(item.diferenca)}
+            </p>
+          </div>
+          <div class="card-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn-sm btn-primary" onclick="corrigirValorEntrada('${item.entrada.id}', ${item.valorMensalidade})">Corrigir Valor no Caixa</button>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += `</div></div>`;
+  }
+  
   // Mostrar mensalidades orfas (aluno nao esta mais na turma)
   if (mensalidadesOrfas.length > 0) {
     const idOrfas = semEntrada.length === 0 ? 'id="detalhes-inconsistencias"' : '';
@@ -6483,14 +6558,14 @@ function verificarInconsistencias(mes, ano) {
     html += `</div></div>`;
   }
   
-  if (diferenca === 0 && semEntrada.length === 0 && mensalidadesOrfas.length === 0) {
+  if (diferenca === 0 && semEntrada.length === 0 && valorDivergente.length === 0 && mensalidadesOrfas.length === 0) {
     html += `
       <div style="background: var(--color-card); border: 1px solid #16a34a; border-radius: 8px; padding: 1.5rem; text-align: center;">
         <h3 style="color: #16a34a;">Tudo certo!</h3>
         <p style="color: var(--color-text-muted);">Todas as mensalidades pagas tem entrada correspondente no Caixa.</p>
       </div>
     `;
-  } else if (diferenca !== 0 && semEntrada.length === 0 && mensalidadesOrfas.length === 0) {
+  } else if (diferenca !== 0 && semEntrada.length === 0 && valorDivergente.length === 0 && mensalidadesOrfas.length === 0) {
     // Ha diferenca mas nao foi possivel identificar a causa especifica
     html += `
       <div id="detalhes-inconsistencias" style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1.5rem; margin-top: 1rem;">
