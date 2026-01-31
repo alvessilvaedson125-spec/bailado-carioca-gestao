@@ -80,7 +80,23 @@ client/
 13. **Lixeira (Trash)**: View and restore deleted items
 14. **Configuracoes (Settings)**: Data import/export and preferences
 
-## Recent Changes (Version 4)
+## Recent Changes (Version 9.1)
+
+### Controlled Cleanup Tools (Admin Only)
+- **Limpar Mensalidades**: Button in Mensalidades page (admin only)
+  - Modal with competencia selection (MM/AAAA)
+  - Status filter: pendentes, pagas, todas
+  - Preview of items to be removed
+  - Double confirmation (checkbox + button)
+  - Does NOT affect alunos, turmas, or caixa
+- **Limpar Recibos**: Button in Recibos page (admin only)
+  - Modal with competencia selection (MM/AAAA)
+  - Type filter: mensalidade, aula_avulsa, todos
+  - Preview of items to be removed
+  - Double confirmation (checkbox + button)
+  - Does NOT alter Caixa or recreate mensalidades
+
+## Previous Changes (Version 4)
 
 ### Dashboard Charts (Chart.js)
 - Toggle button "Exibir Graficos" / "Ocultar Graficos" on dashboard
