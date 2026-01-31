@@ -29,8 +29,16 @@ export function serveStatic(app: Express) {
 
   const publicPath = path.resolve(clientPath, "public");
 
-  // Serve static files from client/public (app.js, style.css, etc.)
-  app.use(express.static(publicPath));
+  // Serve static files from client/public with no-cache for JS/CSS
+  app.use(express.static(publicPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      }
+    }
+  }));
   
   // Serve other static files from client folder (logo, etc.)
   app.use(express.static(clientPath));
