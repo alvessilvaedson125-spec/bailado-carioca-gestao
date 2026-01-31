@@ -6255,7 +6255,7 @@ function verificarInconsistencias(mes, ano) {
       <div class="summary-card">
         <span class="card-title">Diferenca</span>
         <span class="card-value" style="color: ${diferenca === 0 ? '#16a34a' : '#dc2626'};">${formatarReais(diferenca)}</span>
-        <span style="font-size: 0.85rem; color: var(--color-text-muted);">${diferenca === 0 ? 'OK' : '<a href="#detalhes-inconsistencias" style="color: #3b82f6; text-decoration: underline; cursor: pointer;">Ver detalhes abaixo</a>'}</span>
+        <span style="font-size: 0.85rem; color: var(--color-text-muted);">${diferenca === 0 ? 'OK' : '<span onclick="document.getElementById(\'detalhes-inconsistencias\')?.scrollIntoView({behavior: \'smooth\'})" style="color: #3b82f6; text-decoration: underline; cursor: pointer;">Ver detalhes abaixo</span>'}</span>
       </div>
     </div>
   `;
@@ -6338,6 +6338,23 @@ function verificarInconsistencias(mes, ano) {
       <div style="background: var(--color-card); border: 1px solid #16a34a; border-radius: 8px; padding: 1.5rem; text-align: center;">
         <h3 style="color: #16a34a;">Tudo certo!</h3>
         <p style="color: var(--color-text-muted);">Todas as mensalidades pagas tem entrada correspondente no Caixa.</p>
+      </div>
+    `;
+  } else if (diferenca !== 0 && semEntrada.length === 0 && mensalidadesOrfas.length === 0) {
+    // Ha diferenca mas nao foi possivel identificar a causa especifica
+    html += `
+      <div id="detalhes-inconsistencias" style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1.5rem; margin-top: 1rem;">
+        <h3 style="color: #f59e0b; margin-bottom: 1rem;">Diferenca detectada: ${formatarReais(Math.abs(diferenca))}</h3>
+        <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
+          ${totalMensalidades > totalEntradasCaixa 
+            ? `Existem ${formatarReais(diferenca)} a mais em mensalidades do que entradas no caixa. Isso pode indicar mensalidades marcadas como pagas sem lancamento no caixa.`
+            : `Existem ${formatarReais(Math.abs(diferenca))} a mais em entradas no caixa do que mensalidades pagas. Verifique entradas duplicadas ou pagamentos lancados sem mensalidade correspondente.`
+          }
+        </p>
+        <p style="color: var(--color-text-muted); font-size: 0.9rem;">
+          <strong>Mensalidades pagas:</strong> ${mensalidadesPagas.length} (${formatarReais(totalMensalidades)})<br>
+          <strong>Entradas de mensalidade:</strong> ${entradasCaixa.length} (${formatarReais(totalEntradasCaixa)})
+        </p>
       </div>
     `;
   }
