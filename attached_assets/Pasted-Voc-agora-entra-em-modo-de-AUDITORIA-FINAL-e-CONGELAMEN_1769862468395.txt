@@ -1,0 +1,166 @@
+Você agora entra em modo de AUDITORIA FINAL e CONGELAMENTO DE VERSÃO.
+
+Sistema: Bailado Carioca  
+Status esperado: sistema em uso diário (produção interna)
+
+---
+
+## 🧠 OBJETIVO GERAL
+
+1. Executar uma VARREDURA COMPLETA do sistema
+2. Gerar FEEDBACK TÉCNICO E FUNCIONAL
+3. CONGELAR a versão atual
+4. Corrigir APENAS erros reais, se encontrados
+
+⚠️ Importante:
+- NÃO adicionar funcionalidades
+- NÃO alterar UX
+- NÃO refatorar código
+- NÃO “melhorar” nada por iniciativa própria
+
+---
+
+## 🔍 ETAPA 1 — VARREDURA COMPLETA (OBRIGATÓRIA)
+
+Verifique, um a um, os módulos abaixo:
+
+### Autenticação e Perfis
+- Login admin / operacional
+- Restrição de acesso por perfil
+- Persistência de sessão
+- Logout
+
+### Navegação
+- Menu lateral visível e clicável
+- Rotas funcionais
+- Estado inicial correto por perfil
+
+### Dashboard
+- Cards de totais
+- Separação correta: Alunos x Bolsistas
+- Inadimplentes corretos
+- Alerta de inconsistência financeira
+
+### Alunos
+- Cadastro
+- Edição
+- Múltiplas turmas
+- Status (ativo / trancado / excluído)
+- Histórico
+
+### Bolsistas
+- Cadastro direto
+- Múltiplas turmas
+- Separação total de alunos regulares
+- NÃO aparecem em inadimplência
+- Presença funcional
+
+### Turmas
+- Professores e monitores múltiplos
+- Remoção individual e total
+- Alunos derivados dinamicamente
+- Bolsistas identificados
+
+### Presença
+- Registro
+- Consulta
+- Inclusão de bolsistas
+- Histórico
+
+### Mensalidades
+- Geração individual
+- Disparo múltiplo (aluno / turma / unidade)
+- Soma correta para múltiplas turmas
+- Status paga / pendente
+- Filtros por status, turma e unidade
+- Organização por competência
+
+### Caixa
+- Entradas
+- Saídas
+- Aula avulsa
+- Cancelamentos
+- Saldo correto por mês
+- Auditoria mensalidades x caixa
+
+### Recibos
+- Geração automática
+- PDF
+- WhatsApp
+
+### Relatórios
+- Mensal
+- Comparativos
+- Cancelados excluídos
+
+### Configurações
+- Tema
+- Backup / Restore
+- Alteração de senha
+
+---
+
+## 📋 ETAPA 2 — FEEDBACK OBRIGATÓRIO
+
+Após a varredura, gere:
+
+1. Checklist com status:
+   - OK
+   - Atenção
+   - Erro
+
+2. Feedback técnico:
+   - Estabilidade
+   - Confiabilidade dos dados
+   - Riscos detectados (se houver)
+
+3. Confirmação explícita:
+   - “Sistema apto para uso diário”
+
+---
+
+## 🧊 ETAPA 3 — CONGELAMENTO DE VERSÃO
+
+Se NÃO houver erros críticos:
+
+- Declarar oficialmente:
+  “VERSÃO CONGELADA”
+
+- Informar:
+  - nenhuma alteração deve ser feita
+  - apenas correções de bug crítico são permitidas
+  - novas funcionalidades entram em próximo ciclo
+
+---
+
+## 🛠️ ETAPA 4 — CORREÇÃO (CONDICIONAL)
+
+⚠️ Só execute esta etapa se:
+- houver erro REAL
+- comprovável
+- com impacto funcional
+
+Para cada erro:
+- descrever claramente
+- apontar causa
+- aplicar correção mínima
+- confirmar que nada foi quebrado
+
+❌ Não corrigir:
+- opinião
+- estética
+- “acho que pode melhorar”
+
+---
+
+## 📌 SAÍDA FINAL ESPERADA
+
+- Checklist completo
+- Feedback profissional
+- Declaração de congelamento
+- (Opcional) correção pontual aplicada
+
+Se tudo estiver OK:
+Encerrar sem mudanças.
+
+Este prompt tem prioridade absoluta sobre qualquer outro.
