@@ -957,7 +957,7 @@ const pagesRenderers = {
     let totalMatriculas = 0;
     DataStore.state.data.alunos.filter(a => a.status === "ativo").forEach(aluno => {
       const turmasDoAluno = getTurmasIds(aluno);
-      totalMatriculas += Math.max(turmasDoAluno.length, 1);
+      totalMatriculas += turmasDoAluno.length;
     });
     
     const cards = [
