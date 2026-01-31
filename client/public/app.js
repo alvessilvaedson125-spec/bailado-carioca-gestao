@@ -652,6 +652,116 @@ let chartInstances = {
   saldo: null
 };
 
+/** Executa diagnostico completo dos dados do sistema */
+function executarDiagnostico() {
+  const container = document.getElementById("diagnostico-container");
+  if (!container) return;
+
+  const turmasExistentes = DataStore.state.data.turmas.map(t => t.id);
+  const turmasAtivas = DataStore.state.data.turmas.filter(t => t.ativa !== false);
+  const alunosAtivos = DataStore.state.data.alunos.filter(a => a.status === "ativo");
+  
+  let problemas = [];
+  let detalhesTurmas = [];
+  let alunosComTurmasInvalidas = [];
+  
+  // Verificar cada turma ativa e contar alunos
+  let totalMatriculasCalculado = 0;
+  turmasAtivas.forEach(turma => {
+    const alunosDaTurma = getAlunosDaTurma(turma.id);
+    totalMatriculasCalculado += alunosDaTurma.length;
+    detalhesTurmas.push({
+      nome: turma.nome,
+      nivel: turma.nivel || "N/A",
+      qtd: alunosDaTurma.length
+    });
+  });
+
+  // Verificar alunos com turmas_ids invalidas
+  alunosAtivos.forEach(aluno => {
+    const turmasDoAluno = getTurmasIds(aluno);
+    const turmasInvalidas = turmasDoAluno.filter(tid => !turmasExistentes.includes(tid));
+    if (turmasInvalidas.length > 0) {
+      alunosComTurmasInvalidas.push({
+        id: aluno.id,
+        nome: aluno.nome,
+        turmasInvalidas: turmasInvalidas,
+        turmasValidas: turmasDoAluno.filter(tid => turmasExistentes.includes(tid))
+      });
+      problemas.push(`${aluno.nome}: ${turmasInvalidas.length} turma(s) inexistente(s)`);
+    }
+  });
+
+  // Contar matriculas do jeito antigo (pelo aluno) para comparar
+  let matriculasPorAluno = 0;
+  alunosAtivos.forEach(aluno => {
+    const turmasDoAluno = getTurmasIds(aluno);
+    matriculasPorAluno += turmasDoAluno.length;
+  });
+
+  // Gerar HTML do relatorio
+  let html = `
+    <div style="font-size: 0.9rem; color: var(--color-text-secondary);">
+      <h4 style="margin: 0 0 1rem 0; color: var(--color-text-primary);">Resultado da Analise</h4>
+      
+      <div style="margin-bottom: 1rem; padding: 0.75rem; background: var(--color-bg-primary); border-radius: 6px;">
+        <strong>Resumo:</strong><br>
+        - Alunos ativos: ${alunosAtivos.length}<br>
+        - Turmas ativas: ${turmasAtivas.length}<br>
+        - Matriculas (soma das turmas): ${totalMatriculasCalculado}<br>
+        - Matriculas (contagem por aluno): ${matriculasPorAluno}
+      </div>
+      
+      <div style="margin-bottom: 1rem;">
+        <strong>Detalhes por Turma:</strong>
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+          ${detalhesTurmas.map(t => `<li>${t.nome} (${t.nivel}): ${t.qtd} aluno(s)</li>`).join("")}
+        </ul>
+        <strong>Total: ${totalMatriculasCalculado}</strong>
+      </div>
+  `;
+
+  if (alunosComTurmasInvalidas.length > 0) {
+    html += `
+      <div style="margin-bottom: 1rem; padding: 0.75rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px;">
+        <strong style="color: #dc2626;">Problemas Encontrados (${alunosComTurmasInvalidas.length}):</strong>
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem; color: #991b1b;">
+          ${problemas.slice(0, 10).map(p => `<li>${p}</li>`).join("")}
+          ${problemas.length > 10 ? `<li>... e mais ${problemas.length - 10} problema(s)</li>` : ""}
+        </ul>
+        <button class="btn-primary" id="btn-corrigir-turmas" style="margin-top: 0.5rem; font-size: 0.85rem;">Corrigir Automaticamente</button>
+      </div>
+    `;
+  } else {
+    html += `
+      <div style="padding: 0.75rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;">
+        <strong style="color: #16a34a;">Nenhum problema encontrado nos dados.</strong>
+      </div>
+    `;
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+
+  // Adicionar evento de correcao
+  const btnCorrigir = document.getElementById("btn-corrigir-turmas");
+  if (btnCorrigir) {
+    btnCorrigir.onclick = () => {
+      let corrigidos = 0;
+      alunosComTurmasInvalidas.forEach(info => {
+        const aluno = DataStore.state.data.alunos.find(a => a.id === info.id);
+        if (aluno) {
+          setTurmasIds(aluno, info.turmasValidas);
+          corrigidos++;
+        }
+      });
+      DataStore.save();
+      alert(`${corrigidos} aluno(s) corrigido(s). As turmas invalidas foram removidas.`);
+      UI.navigate("dashboard");
+    };
+  }
+}
+
 /** Renderiza graficos do dashboard */
 function renderizarGraficos() {
   const dados = obterDadosMensais();
@@ -1044,6 +1154,20 @@ const pagesRenderers = {
         renderizarGraficos();
       }
     };
+
+    // Adicionar secao de diagnostico de dados
+    const diagSection = document.createElement("div");
+    diagSection.style.cssText = "margin-top: 2rem; padding: 1rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 8px;";
+    diagSection.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="margin: 0; font-size: 1.1rem; color: var(--color-text-primary);">Diagnostico de Dados</h3>
+        <button class="btn-secondary" id="btn-diagnostico" data-testid="button-diagnostico" style="font-size: 0.8rem;">Executar Diagnostico</button>
+      </div>
+      <div id="diagnostico-container"></div>
+    `;
+    UI.content.appendChild(diagSection);
+
+    document.getElementById("btn-diagnostico").onclick = executarDiagnostico;
   },
 
   alunos() {
