@@ -952,9 +952,17 @@ const pagesRenderers = {
     const alunosPagantes = DataStore.state.data.alunos.filter(a => a.status === "ativo" && !isBolsista(a)).length;
     const bolsistasAtivos = DataStore.state.data.alunos.filter(a => a.status === "ativo" && isBolsista(a)).length;
     
+    // Contar matriculas totais (alunos podem estar em multiplas turmas)
+    let totalMatriculas = 0;
+    DataStore.state.data.alunos.filter(a => a.status === "ativo").forEach(aluno => {
+      const turmas = getTurmasIds(aluno);
+      totalMatriculas += turmas.length > 0 ? turmas.length : 1;
+    });
+    
     const cards = [
       ["Alunos Ativos", alunosPagantes, null],
       ["Bolsistas Ativos", bolsistasAtivos, null],
+      ["Matriculas por Turma", totalMatriculas, null],
       ["Alunos Trancados", DataStore.countTrancados(), null],
       ["Turmas Ativas", DataStore.count("turmas"), null],
       ["Unidades", DataStore.count("unidades"), null],
@@ -6255,7 +6263,7 @@ function verificarInconsistencias(mes, ano) {
       <div class="summary-card">
         <span class="card-title">Diferenca</span>
         <span class="card-value" style="color: ${diferenca === 0 ? '#16a34a' : '#dc2626'};">${formatarReais(diferenca)}</span>
-        <span style="font-size: 0.85rem; color: var(--color-text-muted);">${diferenca === 0 ? 'OK' : '<span onclick="document.getElementById(\'detalhes-inconsistencias\')?.scrollIntoView({behavior: \'smooth\'})" style="color: #3b82f6; text-decoration: underline; cursor: pointer;">Ver detalhes abaixo</span>'}</span>
+        <span id="link-detalhes" style="font-size: 0.85rem; color: var(--color-text-muted);">${diferenca === 0 ? 'OK' : '<span style="color: #3b82f6; text-decoration: underline; cursor: pointer;">Ver detalhes abaixo</span>'}</span>
       </div>
     </div>
   `;
@@ -6566,6 +6574,17 @@ function verificarInconsistencias(mes, ano) {
   }
 
   container.innerHTML = html;
+  
+  // Adicionar evento de clique no link de detalhes
+  const linkDetalhes = document.getElementById("link-detalhes");
+  if (linkDetalhes) {
+    linkDetalhes.onclick = () => {
+      const detalhes = document.getElementById("detalhes-inconsistencias");
+      if (detalhes) {
+        detalhes.scrollIntoView({ behavior: "smooth" });
+      }
+    };
+  }
 }
 
 /** Cancela uma entrada do caixa */
