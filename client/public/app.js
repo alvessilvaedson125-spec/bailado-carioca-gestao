@@ -1145,9 +1145,20 @@ function renderCardsAlunosAtivos(buscaNome) {
   const grid = criarGridCards();
 
   alunos.forEach(aluno => {
-    const turma = DataStore.findById("turmas", aluno.turma);
-    const unidade = turma ? DataStore.findById("unidades", turma.unidade_id) : null;
+    // Buscar TODAS as turmas do aluno
+    const turmasIds = getTurmasIds(aluno);
+    const turmasDoAluno = turmasIds.map(tid => DataStore.findById("turmas", tid)).filter(Boolean);
+    const primeiraTurma = turmasDoAluno[0];
+    const unidade = primeiraTurma ? DataStore.findById("unidades", primeiraTurma.unidade_id) : null;
     const isInadimplente = alunoInadimplente(aluno.id);
+    
+    // Formatar lista de turmas
+    let turmasTexto = "Sem turma";
+    if (turmasDoAluno.length === 1) {
+      turmasTexto = `${turmasDoAluno[0].nome} (${turmasDoAluno[0].nivel || ""})`;
+    } else if (turmasDoAluno.length > 1) {
+      turmasTexto = turmasDoAluno.map(t => `${t.nome} (${t.nivel || ""})`).join("<br>");
+    }
 
     const card = document.createElement("div");
     card.className = "summary-card aluno-card";
@@ -1160,6 +1171,7 @@ function renderCardsAlunosAtivos(buscaNome) {
         <h3 class="aluno-nome">${aluno.nome}</h3>
         <div class="aluno-badges">
           ${isInadimplente ? '<span class="badge badge-warning">Pendente</span>' : ''}
+          ${turmasDoAluno.length > 1 ? '<span class="badge badge-muted">' + turmasDoAluno.length + ' turmas</span>' : ''}
           <span class="badge badge-success">Ativo</span>
         </div>
       </div>
@@ -1167,11 +1179,11 @@ function renderCardsAlunosAtivos(buscaNome) {
       <div class="aluno-body">
         <div class="aluno-info-row aluno-info-primary">
           <span class="info-icon">T</span>
-          <span>${turma ? `${turma.nome} (${turma.nivel})` : "Sem turma"}</span>
+          <span>${turmasTexto}</span>
         </div>
         <div class="aluno-info-row">
           <span class="info-icon">U</span>
-          <span>${unidade?.nome || turma?.unidade || aluno.unidade || "-"}</span>
+          <span>${unidade?.nome || primeiraTurma?.unidade || aluno.unidade || "-"}</span>
         </div>
         <div class="aluno-info-row aluno-info-highlight">
           <span class="info-icon">$</span>
@@ -7087,6 +7099,18 @@ function renderConfig() {
       <input type="file" id="inputImportFile" accept=".json" style="display: none;">
     </div>
     <p id="msgBackup" style="margin-top: 1rem; color: #16a34a; display: none;"></p>
+
+    <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e5e7eb;">
+
+    <h3 style="margin-bottom: 1rem;">Alunos Duplicados</h3>
+    <p style="color: #6b7280; margin-bottom: 1rem; font-size: 0.9rem;">
+      Identifique alunos com cadastros duplicados (mesmo nome ou telefone) e mescle-os em um unico registro,
+      preservando todo o historico financeiro e de presenca.
+    </p>
+    <button class="btn-primary" id="btnIdentificarDuplicados" data-testid="button-identify-duplicates" style="background: #f59e0b;">
+      Identificar Alunos Duplicados
+    </button>
+    <div id="duplicadosContainer" style="margin-top: 1rem;"></div>
   `;
 
   container.querySelector("#btnSalvarConfig").onclick = () => {
@@ -7192,7 +7216,240 @@ function renderConfig() {
     inputFile.value = "";
   };
 
+  // Identificar alunos duplicados
+  container.querySelector("#btnIdentificarDuplicados").onclick = () => {
+    identificarAlunosDuplicados(container.querySelector("#duplicadosContainer"));
+  };
+
   UI.content.appendChild(container);
+}
+
+/** Identifica alunos com nomes ou telefones duplicados */
+function identificarAlunosDuplicados(container) {
+  container.innerHTML = '<p style="color: var(--color-text-muted);">Analisando...</p>';
+  
+  const alunos = DataStore.state.data.alunos.filter(a => a.status !== "excluido");
+  const duplicadosNome = new Map();
+  const duplicadosTelefone = new Map();
+  const alunosJaAgrupados = new Set();
+  
+  // Agrupar por nome normalizado
+  alunos.forEach(aluno => {
+    const nomeNormalizado = (aluno.nome || "").toLowerCase().trim().replace(/\s+/g, " ");
+    if (nomeNormalizado.length > 2) {
+      if (!duplicadosNome.has(nomeNormalizado)) {
+        duplicadosNome.set(nomeNormalizado, []);
+      }
+      duplicadosNome.get(nomeNormalizado).push(aluno);
+    }
+  });
+  
+  // Agrupar por telefone normalizado
+  alunos.forEach(aluno => {
+    const telefoneNormalizado = (aluno.telefone || "").replace(/\D/g, "");
+    if (telefoneNormalizado.length >= 8) {
+      if (!duplicadosTelefone.has(telefoneNormalizado)) {
+        duplicadosTelefone.set(telefoneNormalizado, []);
+      }
+      duplicadosTelefone.get(telefoneNormalizado).push(aluno);
+    }
+  });
+  
+  // Filtrar apenas grupos com 2+ alunos
+  const gruposDuplicados = [];
+  
+  // Por nome
+  duplicadosNome.forEach((grupo, nome) => {
+    if (grupo.length > 1) {
+      grupo.forEach(a => alunosJaAgrupados.add(a.id));
+      gruposDuplicados.push({ chave: nome, tipo: "nome", alunos: grupo });
+    }
+  });
+  
+  // Por telefone (apenas alunos nao agrupados por nome)
+  duplicadosTelefone.forEach((grupo, telefone) => {
+    const grupoNovo = grupo.filter(a => !alunosJaAgrupados.has(a.id));
+    if (grupoNovo.length > 1) {
+      gruposDuplicados.push({ chave: telefone, tipo: "telefone", alunos: grupoNovo });
+    }
+  });
+  
+  if (gruposDuplicados.length === 0) {
+    container.innerHTML = '<p style="color: #16a34a;">Nenhum aluno duplicado encontrado!</p>';
+    return;
+  }
+  
+  let html = `
+    <div style="background: var(--color-card); border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-top: 1rem;">
+      <h4 style="color: #f59e0b; margin-bottom: 1rem;">Encontrados ${gruposDuplicados.length} grupo(s) de alunos duplicados</h4>
+  `;
+  
+  gruposDuplicados.forEach((grupo, idx) => {
+    const tipoLabel = grupo.tipo === "nome" ? "Mesmo nome" : "Mesmo telefone";
+    html += `
+      <div style="background: var(--color-background); border: 1px solid var(--color-border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+        <h5 style="margin-bottom: 0.5rem;">${grupo.chave} <span class="badge badge-muted">${tipoLabel}</span> (${grupo.alunos.length} cadastros)</h5>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+    `;
+    
+    grupo.alunos.forEach((aluno, i) => {
+      const turmasIds = getTurmasIds(aluno);
+      const turmasNomes = turmasIds.map(tid => {
+        const t = DataStore.findById("turmas", tid);
+        return t ? t.nome : "N/A";
+      }).join(", ");
+      
+      const totalMensalidades = DataStore.state.data.mensalidades.filter(m => m.aluno_id === aluno.id).length;
+      const totalPresencas = DataStore.state.data.presencas.filter(p => p.aluno_id === aluno.id).length;
+      
+      html += `
+        <div style="flex: 1; min-width: 200px; background: var(--color-card); border: 1px solid var(--color-border); border-radius: 6px; padding: 0.75rem;">
+          <strong>${aluno.nome}</strong>
+          <span class="badge badge-${aluno.status === 'ativo' ? 'success' : 'muted'}" style="margin-left: 0.5rem;">${aluno.status}</span>
+          <p style="font-size: 0.85rem; color: var(--color-text-muted); margin: 0.25rem 0;">Turmas: ${turmasNomes || "Nenhuma"}</p>
+          <p style="font-size: 0.85rem; color: var(--color-text-muted); margin: 0.25rem 0;">Mensalidade: ${formatarReais(aluno.mensalidade)}</p>
+          <p style="font-size: 0.85rem; color: var(--color-text-muted); margin: 0.25rem 0;">Tel: ${aluno.telefone || "N/A"}</p>
+          <p style="font-size: 0.8rem; color: var(--color-text-muted); margin: 0.25rem 0;">${totalMensalidades} pagtos / ${totalPresencas} presencas</p>
+          <input type="radio" name="principal_${idx}" value="${aluno.id}" ${i === 0 ? 'checked' : ''} style="margin-top: 0.5rem;"> Manter este
+        </div>
+      `;
+    });
+    
+    html += `
+        </div>
+        <button class="btn-primary btn-sm" onclick="mesclarAlunosDuplicados('${grupo.alunos.map(a => a.id).join(',')}', ${idx})">
+          Mesclar Cadastros
+        </button>
+      </div>
+    `;
+  });
+  
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+/** Mescla alunos duplicados em um unico registro */
+function mesclarAlunosDuplicados(idsStr, grupoIdx) {
+  const ids = idsStr.split(",");
+  
+  // Obter qual aluno manter como principal
+  const radioSelecionado = document.querySelector(`input[name="principal_${grupoIdx}"]:checked`);
+  if (!radioSelecionado) {
+    alert("Selecione qual cadastro manter como principal");
+    return;
+  }
+  
+  const idPrincipal = radioSelecionado.value;
+  const alunoPrincipal = DataStore.state.data.alunos.find(a => a.id === idPrincipal);
+  
+  if (!alunoPrincipal) {
+    alert("Erro: aluno principal nao encontrado");
+    return;
+  }
+  
+  const alunosMesclar = ids.filter(id => id !== idPrincipal).map(id => 
+    DataStore.state.data.alunos.find(a => a.id === id)
+  ).filter(Boolean);
+  
+  if (alunosMesclar.length === 0) {
+    alert("Nenhum aluno secundario para mesclar");
+    return;
+  }
+  
+  // Confirmar
+  const nomesMesclar = alunosMesclar.map(a => a.nome).join(", ");
+  if (!confirm(`Mesclar os cadastros de "${nomesMesclar}" com "${alunoPrincipal.nome}"?\n\nTodas as mensalidades, presencas e historico serao transferidos para o cadastro principal.\n\nOs cadastros duplicados serao marcados como excluidos.`)) {
+    return;
+  }
+  
+  // Mesclar campos vazios do principal com dados dos secundarios
+  alunosMesclar.forEach(aluno => {
+    if (!alunoPrincipal.telefone && aluno.telefone) alunoPrincipal.telefone = aluno.telefone;
+    if (!alunoPrincipal.email && aluno.email) alunoPrincipal.email = aluno.email;
+    if (!alunoPrincipal.cpf && aluno.cpf) alunoPrincipal.cpf = aluno.cpf;
+    if (!alunoPrincipal.unidade && aluno.unidade) alunoPrincipal.unidade = aluno.unidade;
+    // Usar maior mensalidade se principal for zero
+    if ((!alunoPrincipal.mensalidade || alunoPrincipal.mensalidade == 0) && aluno.mensalidade) {
+      alunoPrincipal.mensalidade = aluno.mensalidade;
+    }
+  });
+  
+  // Coletar turmas de todos os alunos
+  const todasTurmas = new Set(getTurmasIds(alunoPrincipal));
+  alunosMesclar.forEach(aluno => {
+    getTurmasIds(aluno).forEach(tid => todasTurmas.add(tid));
+  });
+  
+  // Atualizar turmas do aluno principal
+  setTurmasIds(alunoPrincipal, Array.from(todasTurmas));
+  
+  // Transferir mensalidades
+  alunosMesclar.forEach(aluno => {
+    DataStore.state.data.mensalidades.forEach(m => {
+      if (m.aluno_id === aluno.id) {
+        m.aluno_id = idPrincipal;
+      }
+    });
+  });
+  
+  // Transferir presencas
+  alunosMesclar.forEach(aluno => {
+    DataStore.state.data.presencas.forEach(p => {
+      if (p.aluno_id === aluno.id) {
+        p.aluno_id = idPrincipal;
+      }
+    });
+  });
+  
+  // Transferir entradas do caixa
+  alunosMesclar.forEach(aluno => {
+    DataStore.state.data.caixa.forEach(c => {
+      if (c.aluno_id === aluno.id) {
+        c.aluno_id = idPrincipal;
+      }
+    });
+  });
+  
+  // Transferir recibos
+  alunosMesclar.forEach(aluno => {
+    DataStore.state.data.recibos.forEach(r => {
+      if (r.aluno_id === aluno.id) {
+        r.aluno_id = idPrincipal;
+      }
+    });
+  });
+  
+  // Mesclar historico
+  alunosMesclar.forEach(aluno => {
+    if (aluno.historico && Array.isArray(aluno.historico)) {
+      if (!alunoPrincipal.historico) alunoPrincipal.historico = [];
+      aluno.historico.forEach(h => {
+        alunoPrincipal.historico.push({
+          ...h,
+          descricao: `[De ${aluno.nome}] ${h.descricao}`
+        });
+      });
+    }
+  });
+  
+  // Adicionar evento de mesclagem
+  adicionarEventoAluno(idPrincipal, `Cadastros mesclados: ${nomesMesclar}`);
+  
+  // Marcar alunos secundarios como excluidos
+  alunosMesclar.forEach(aluno => {
+    aluno.status = "excluido";
+    aluno.dataExclusao = new Date().toISOString();
+    adicionarEventoAluno(aluno.id, `Cadastro mesclado com ${alunoPrincipal.nome}`);
+  });
+  
+  DataStore.save();
+  alert(`Cadastros mesclados com sucesso!\n\n${alunosMesclar.length} cadastro(s) foram transferidos para ${alunoPrincipal.nome}.`);
+  
+  // Recarregar lista de duplicados
+  const container = document.getElementById("duplicadosContainer");
+  if (container) {
+    identificarAlunosDuplicados(container);
+  }
 }
 
 /** Exporta todos os dados para arquivo JSON */
