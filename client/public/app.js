@@ -872,28 +872,51 @@ function gerarNumeroRecibo() {
 }
 
 /** Template do recibo - texto gerado dinamicamente */
+/** Obtem os nomes das turmas do aluno para exibicao no recibo */
+function obterTurmasDoAluno(alunoId) {
+  if (!alunoId) return "Nao informado";
+  
+  const aluno = DataStore.state.data.alunos.find(a => a.id === alunoId);
+  if (!aluno) return "Nao informado";
+  
+  const turmasIds = getTurmasIds(aluno);
+  if (turmasIds.length === 0) return "Nao informado";
+  
+  const turmas = DataStore.state.data.turmas;
+  const nomesTurmas = turmasIds
+    .map(tid => {
+      const turma = turmas.find(t => t.id === tid);
+      return turma ? formatarTurmaNivel(turma) : null;
+    })
+    .filter(Boolean);
+  
+  return nomesTurmas.length > 0 ? nomesTurmas.join(", ") : "Nao informado";
+}
+
 function gerarTextoRecibo(recibo) {
   const config = DataStore.state.data.config || {};
-  const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "Não informado";
-  const telefoneAluno = recibo.telefoneAluno || recibo.telefone || "Não informado";
-  const descricao = recibo.descricaoServico || recibo.competencia || "serviço prestado";
-  const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "Não informado";
+  const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "Nao informado";
+  const telefoneAluno = recibo.telefoneAluno || recibo.telefone || "Nao informado";
+  const descricao = recibo.descricaoServico || recibo.competencia || "servico prestado";
+  const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "Nao informado";
   const nomeRecebedor = config.nomeRecebedor || "Edson Silva";
-  const cnpj = config.cnpj || "Não informado";
+  const cnpj = config.cnpj || "Nao informado";
   const nomeProjeto = config.nomeProjeto || "Bailado Carioca";
+  const turmasAluno = obterTurmasDoAluno(recibo.aluno_id);
   
-  return `RECIBO Nº ${recibo.numero || "S/N"}
+  return `RECIBO N ${recibo.numero || "S/N"}
 
 Confirmo o recebimento de ${formatarReais(recibo.valor)},
 referente a ${descricao}.
 
 Aluno: ${nomeAluno}
 Telefone: ${telefoneAluno}
+Turmas: ${turmasAluno}
 
 Forma de pagamento: ${formaPgto}
 Data do pagamento: ${formatarData(recibo.data)}
 
-Declaro que o valor acima foi recebido e dou plena quitação.
+Declaro que o valor acima foi recebido e dou plena quitacao.
 
 Recebedor:
 ${nomeRecebedor}
@@ -926,13 +949,14 @@ function gerarLinkWhatsApp(telefone, texto) {
 function gerarPDFRecibo(recibo) {
   const config = DataStore.state.data.config || {};
   const dataGeracao = new Date().toLocaleString("pt-BR");
-  const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "Não informado";
-  const telefoneAluno = recibo.telefoneAluno || recibo.telefone || "Não informado";
-  const descricao = recibo.descricaoServico || recibo.competencia || "serviço prestado";
-  const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "Não informado";
+  const nomeAluno = recibo.nomeAluno || recibo.aluno_nome || "Nao informado";
+  const telefoneAluno = recibo.telefoneAluno || recibo.telefone || "Nao informado";
+  const descricao = recibo.descricaoServico || recibo.competencia || "servico prestado";
+  const formaPgto = recibo.formaPagamento || recibo.forma_pagamento || "Nao informado";
   const nomeRecebedor = config.nomeRecebedor || "Edson Silva";
-  const cnpj = config.cnpj || "Não informado";
+  const cnpj = config.cnpj || "Nao informado";
   const nomeProjeto = config.nomeProjeto || "Bailado Carioca";
+  const turmasAluno = obterTurmasDoAluno(recibo.aluno_id);
   
   const htmlContent = `
     <!DOCTYPE html>
@@ -1014,9 +1038,10 @@ function gerarPDFRecibo(recibo) {
         <p>Confirmo o recebimento de <strong>${formatarReais(recibo.valor)}</strong>, referente a ${descricao}.</p>
         <p><strong>Aluno:</strong> ${nomeAluno}</p>
         <p><strong>Telefone:</strong> ${telefoneAluno}</p>
+        <p><strong>Turmas:</strong> ${turmasAluno}</p>
         <p><strong>Forma de pagamento:</strong> ${formaPgto}</p>
         <p><strong>Data do pagamento:</strong> ${formatarData(recibo.data)}</p>
-        <p style="margin-top: 30px;">Declaro que o valor acima foi recebido e dou plena quitação.</p>
+        <p style="margin-top: 30px;">Declaro que o valor acima foi recebido e dou plena quitacao.</p>
       </div>
       <div class="recebedor">
         <div>Recebedor:</div>

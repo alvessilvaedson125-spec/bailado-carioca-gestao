@@ -80,7 +80,19 @@ client/
 13. **Lixeira (Trash)**: View and restore deleted items
 14. **Configuracoes (Settings)**: Data import/export and preferences
 
-## Recent Changes (Version 9.1)
+## Recent Changes (Version 9.2)
+
+### Recibos Enhanced
+- **Logo do Bailado Carioca**: Exibida no topo do recibo PDF
+- **Turmas no Recibo**: Mostra todas as turmas que o aluno frequenta
+  - Funcao `obterTurmasDoAluno(alunoId)` busca turmas do aluno
+  - Formata como "Nome - Nivel" para cada turma
+  - Multiplas turmas separadas por virgula
+  - Fallback "Nao informado" quando aluno nao tem turmas
+- **Texto do Recibo**: Inclui campo "Turmas:" com lista completa
+- **PDF do Recibo**: Inclui campo "Turmas:" e logo no cabecalho
+
+## Previous Changes (Version 9.1)
 
 ### Controlled Cleanup Tools (Admin Only)
 - **Limpar Mensalidades**: Button in Mensalidades page (admin only)
