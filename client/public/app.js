@@ -918,8 +918,7 @@ function gerarTextoRecibo(recibo) {
   
   return `RECIBO N ${recibo.numero || "S/N"}
 
-Confirmo o recebimento de ${formatarReais(recibo.valor)},
-referente a ${descricao}.
+Confirmo o recebimento de ${formatarReais(recibo.valor)}, referente as mensalidades das turmas nas quais o aluno esta matriculado, conforme descrito abaixo.
 
 Aluno: ${nomeAluno}
 Telefone: ${telefoneAluno}
@@ -1047,7 +1046,7 @@ function gerarPDFRecibo(recibo) {
         <div class="numero">Nº ${recibo.numero || "S/N"}</div>
       </div>
       <div class="body">
-        <p>Confirmo o recebimento de <strong>${formatarReais(recibo.valor)}</strong>, referente a ${descricao}.</p>
+        <p>Confirmo o recebimento de <strong>${formatarReais(recibo.valor)}</strong>, referente as mensalidades das turmas nas quais o aluno esta matriculado, conforme descrito abaixo.</p>
         <p><strong>Aluno:</strong> ${nomeAluno}</p>
         <p><strong>Telefone:</strong> ${telefoneAluno}</p>
         <p><strong>Turmas:</strong> ${turmasAluno}</p>
