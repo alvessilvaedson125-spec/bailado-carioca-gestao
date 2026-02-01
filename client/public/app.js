@@ -873,24 +873,36 @@ function gerarNumeroRecibo() {
 
 /** Template do recibo - texto gerado dinamicamente */
 /** Obtem os nomes das turmas do aluno para exibicao no recibo */
-function obterTurmasDoAluno(alunoId) {
-  if (!alunoId) return "Nao informado";
+function obterTurmasDoAluno(alunoIdOuNome) {
+  if (!alunoIdOuNome) return "Nao informado";
   
-  const aluno = DataStore.state.data.alunos.find(a => a.id === alunoId);
+  // Buscar aluno por ID ou por nome (fallback para recibos antigos)
+  let aluno = DataStore.state.data.alunos.find(a => a.id === alunoIdOuNome);
+  if (!aluno) {
+    // Fallback: buscar por nome exato
+    aluno = DataStore.state.data.alunos.find(a => a.nome === alunoIdOuNome);
+  }
   if (!aluno) return "Nao informado";
   
-  const turmasIds = getTurmasIds(aluno);
-  if (turmasIds.length === 0) return "Nao informado";
-  
+  // Buscar todas as turmas onde este aluno participa
   const turmas = DataStore.state.data.turmas;
-  const nomesTurmas = turmasIds
-    .map(tid => {
-      const turma = turmas.find(t => t.id === tid);
-      return turma ? formatarTurmaNivel(turma) : null;
-    })
-    .filter(Boolean);
+  const turmasDoAluno = [];
   
-  return nomesTurmas.length > 0 ? nomesTurmas.join(", ") : "Nao informado";
+  // Metodo 1: Usar turmas_ids do aluno
+  const turmasIds = getTurmasIds(aluno);
+  turmasIds.forEach(tid => {
+    const turma = turmas.find(t => t.id === tid);
+    if (turma) turmasDoAluno.push(formatarTurmaNivel(turma));
+  });
+  
+  // Metodo 2: Verificar todas as turmas se o aluno esta listado (para compatibilidade)
+  turmas.forEach(turma => {
+    if (!turmasIds.includes(turma.id) && alunoEmTurma(aluno, turma.id)) {
+      turmasDoAluno.push(formatarTurmaNivel(turma));
+    }
+  });
+  
+  return turmasDoAluno.length > 0 ? turmasDoAluno.join(", ") : "Nao informado";
 }
 
 function gerarTextoRecibo(recibo) {
@@ -902,7 +914,7 @@ function gerarTextoRecibo(recibo) {
   const nomeRecebedor = config.nomeRecebedor || "Edson Silva";
   const cnpj = config.cnpj || "Nao informado";
   const nomeProjeto = config.nomeProjeto || "Bailado Carioca";
-  const turmasAluno = obterTurmasDoAluno(recibo.aluno_id);
+  const turmasAluno = obterTurmasDoAluno(recibo.aluno_id || nomeAluno);
   
   return `RECIBO N ${recibo.numero || "S/N"}
 
@@ -956,7 +968,7 @@ function gerarPDFRecibo(recibo) {
   const nomeRecebedor = config.nomeRecebedor || "Edson Silva";
   const cnpj = config.cnpj || "Nao informado";
   const nomeProjeto = config.nomeProjeto || "Bailado Carioca";
-  const turmasAluno = obterTurmasDoAluno(recibo.aluno_id);
+  const turmasAluno = obterTurmasDoAluno(recibo.aluno_id || nomeAluno);
   
   const htmlContent = `
     <!DOCTYPE html>
@@ -1030,7 +1042,7 @@ function gerarPDFRecibo(recibo) {
     </head>
     <body>
       <div class="header">
-        <img src="${window.location.origin}/logo.jpg" alt="Bailado Carioca" style="width: 200px; height: auto; margin-bottom: 15px;">
+        <img src="${window.location.origin}/logo.jpg" alt="Bailado Carioca" style="width: 120px; height: auto; margin-bottom: 10px;">
         <h1>RECIBO</h1>
         <div class="numero">Nº ${recibo.numero || "S/N"}</div>
       </div>
@@ -4556,6 +4568,7 @@ function abrirModalPagamento(mensalidade) {
       id: crypto.randomUUID(),
       numero: numeroRecibo,
       pagamentoId: mensalidade.id,
+      aluno_id: mensalidade.aluno_id,
       nomeAluno: aluno?.nome || "N/A",
       telefoneAluno: aluno?.telefone || "",
       valor: mensalidade.valor,
@@ -7425,7 +7438,7 @@ function gerarPDFRelatorio(mes, ano, totalEntradas, totalSaidas, saldo, mensalid
     </head>
     <body>
       <div class="header">
-        <img src="${window.location.origin}/logo.jpg" alt="Bailado Carioca" style="width: 200px; height: auto; margin-bottom: 15px;">
+        <img src="${window.location.origin}/logo.jpg" alt="Bailado Carioca" style="width: 120px; height: auto; margin-bottom: 10px;">
         <h1>${nomeProjeto}</h1>
         <h2>Relatorio Mensal - ${meses[mes]} ${ano}</h2>
       </div>

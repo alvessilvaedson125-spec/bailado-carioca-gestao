@@ -83,14 +83,16 @@ client/
 ## Recent Changes (Version 9.2)
 
 ### Recibos Enhanced
-- **Logo do Bailado Carioca**: Exibida no topo do recibo PDF
+- **Logo do Bailado Carioca**: Exibida no topo do recibo PDF (tamanho 120px)
 - **Turmas no Recibo**: Mostra todas as turmas que o aluno frequenta
-  - Funcao `obterTurmasDoAluno(alunoId)` busca turmas do aluno
+  - Funcao `obterTurmasDoAluno(alunoIdOuNome)` busca turmas do aluno
+  - Aceita ID do aluno ou nome como fallback para recibos antigos
   - Formata como "Nome - Nivel" para cada turma
   - Multiplas turmas separadas por virgula
   - Fallback "Nao informado" quando aluno nao tem turmas
 - **Texto do Recibo**: Inclui campo "Turmas:" com lista completa
 - **PDF do Recibo**: Inclui campo "Turmas:" e logo no cabecalho
+- **aluno_id no Recibo**: Recibos de mensalidade agora guardam aluno_id para busca correta
 
 ## Previous Changes (Version 9.1)
 
