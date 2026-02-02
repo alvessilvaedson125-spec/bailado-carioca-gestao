@@ -916,7 +916,7 @@ function gerarTextoRecibo(recibo) {
   const nomeProjeto = config.nomeProjeto || "Bailado Carioca";
   const turmasAluno = obterTurmasDoAluno(recibo.aluno_id || nomeAluno);
   
-  return `RECIBO N ${recibo.numero || "S/N"}
+  return `RECIBO
 
 Confirmo o recebimento de ${formatarReais(recibo.valor)}, referente as mensalidades das turmas nas quais o aluno esta matriculado, conforme descrito abaixo.
 
@@ -928,6 +928,8 @@ Forma de pagamento: ${formaPgto}
 Data do pagamento: ${formatarData(recibo.data)}
 
 Declaro que o valor acima foi recebido e dou plena quitacao.
+
+Obrigado por dancar com a gente!
 
 Recebedor:
 ${nomeRecebedor}
@@ -1043,7 +1045,6 @@ function gerarPDFRecibo(recibo) {
       <div class="header">
         <img src="${window.location.origin}/logo.jpg" alt="Bailado Carioca" style="width: 60px; height: auto; margin-bottom: 8px; opacity: 0.7;">
         <h1>RECIBO</h1>
-        <div class="numero">Nº ${recibo.numero || "S/N"}</div>
       </div>
       <div class="body">
         <p>Confirmo o recebimento de <strong>${formatarReais(recibo.valor)}</strong>, referente as mensalidades das turmas nas quais o aluno esta matriculado, conforme descrito abaixo.</p>
@@ -1053,6 +1054,7 @@ function gerarPDFRecibo(recibo) {
         <p><strong>Forma de pagamento:</strong> ${formaPgto}</p>
         <p><strong>Data do pagamento:</strong> ${formatarData(recibo.data)}</p>
         <p style="margin-top: 30px;">Declaro que o valor acima foi recebido e dou plena quitacao.</p>
+        <p style="margin-top: 20px; font-style: italic;">Obrigado por dancar com a gente!</p>
       </div>
       <div class="recebedor">
         <div>Recebedor:</div>
