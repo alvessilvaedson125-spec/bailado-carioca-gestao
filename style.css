@@ -1269,7 +1269,7 @@ tbody tr:hover {
   inset: 0;
   width: 100%;
   height: 100%;
-  background-image: url('/logo-original.png');
+  background-image: url('./logo-original.png');
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
