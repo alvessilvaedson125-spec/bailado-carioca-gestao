@@ -970,6 +970,7 @@ function gerarPDFRecibo(recibo) {
   const cnpj = config.cnpj || "Nao informado";
   const nomeProjeto = config.nomeProjeto || "Bailado Carioca";
   const turmasAluno = obterTurmasDoAluno(recibo.aluno_id || nomeAluno);
+  const logoUrl = window.location.origin + "/logo.jpg";
   
   const htmlContent = `
     <!DOCTYPE html>
@@ -1043,7 +1044,7 @@ function gerarPDFRecibo(recibo) {
     </head>
     <body>
       <div class="header">
-        <img src="${window.location.origin}/logo.jpg" alt="Bailado Carioca" style="width: 60px; height: auto; margin-bottom: 8px; opacity: 0.7;">
+        <img src="${logoUrl}" alt="Bailado Carioca" style="width: 60px; height: auto; margin-bottom: 8px; opacity: 0.7;">
         <h1>RECIBO</h1>
       </div>
       <div class="body">
@@ -7396,6 +7397,7 @@ function gerarPDFRelatorio(mes, ano, totalEntradas, totalSaidas, saldo, mensalid
   const nomeProjeto = config.nomeProjeto || "Bailado Carioca";
   const meses = ["","Janeiro","Fevereiro","Marco","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const dataGeracao = new Date().toLocaleString("pt-BR");
+  const logoUrl = window.location.origin + "/logo.jpg";
 
   let htmlMensalidades = mensalidades.length > 0 
     ? mensalidades.map(m => `<tr><td>${m.aluno_nome || "N/A"}</td><td>${formatarReais(m.valor)}</td><td>${m.forma_pagamento || "N/A"}</td></tr>`).join("")
@@ -7439,7 +7441,7 @@ function gerarPDFRelatorio(mes, ano, totalEntradas, totalSaidas, saldo, mensalid
     </head>
     <body>
       <div class="header">
-        <img src="${window.location.origin}/logo.jpg" alt="Bailado Carioca" style="width: 60px; height: auto; margin-bottom: 8px; opacity: 0.7;">
+        <img src="${logoUrl}" alt="Bailado Carioca" style="width: 60px; height: auto; margin-bottom: 8px; opacity: 0.7;">
         <h1>${nomeProjeto}</h1>
         <h2>Relatorio Mensal - ${meses[mes]} ${ano}</h2>
       </div>
